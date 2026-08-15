@@ -1,13 +1,144 @@
 <!doctype html>
+
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Cross-modal Mapping Studio</title>
+</head>
+
+
+<body>
+
+  <div id="app">
+
+    <header>
+      <div>
+        <p class="eyebrow">
+          MULTISENSORY MUSIC SYSTEM / TECHNICAL PROTOTYPE
+        </p>
+
+        <h1>
+          Cross-modal Mapping Studio
+        </h1>
+      </div>
+
+      <div id="status">
+        OFFLINE
+      </div>
+    </header>
+
+
+    <main>
+
+      <section class="camera-section">
+
+        <div class="section-header">
+
+          <span>
+            01 / GESTURE INPUT
+          </span>
+
+          <span>
+            MEDIAPIPE HAND TRACKING
+          </span>
+
+        </div>
+
+
+        <div class="camera-container">
+
+          <video
+            id="webcam"
+            autoplay
+            playsinline
+          ></video>
+
+          <canvas
+            id="overlay"
+          ></canvas>
+
+          <div
+            id="cameraMessage"
+            class="camera-message"
+          >
+            Camera inactive
+          </div>
+
+        </div>
+
+
+        <button id="startButton">
+          START SESSION
+        </button>
+
+      </section>
+
+
+      <aside>
+
+        <p class="eyebrow">
+          LIVE TRACKING
+        </p>
+
+        <h2>
+          Physical Expression
+        </h2>
+
+        <p>
+          Hand movement is translated into
+          continuous machine-readable body data.
+        </p>
+
+
+        <div class="flow">
+
+          <span>GESTURE</span>
+          <b>→</b>
+
+          <span>LANDMARKS</span>
+          <b>→</b>
+
+          <span>MAPPING</span>
+          <b>→</b>
+
+          <span>MUSIC</span>
+
+        </div>
+
+
+        <div class="tracking-info">
+
+          <div>
+            <small>LANDMARKS</small>
+            <strong id="landmarkCount">—</strong>
+          </div>
+
+          <div>
+            <small>HAND</small>
+            <strong id="handStatus">NOT DETECTED</strong>
+          </div>
+
+        </div>
+
+      </aside>
+
+    </main>
+
+  </div>
+
+
+  <script
+    type="module"
+    src="/src/main.js"
+  ></script>
+
+</body>
+
 </html>
