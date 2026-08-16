@@ -13,6 +13,10 @@ import {
   createMappingEngine,
 } from "./mapping/mappingEngine.js";
 
+import {
+  createMappingStudioUI,
+} from "./mapping/mappingUI.js";
+
 
 // ============================================================
 // CORE DOM
@@ -42,14 +46,18 @@ const landmarkCount =
 const handStatus =
   document.querySelector("#handStatus");
 
+const mappingStudioContainer =
+  document.querySelector("#mappingStudio");
+
 
 // ============================================================
-// LEFT / RIGHT UI
+// LEFT / RIGHT HAND UI
 // ============================================================
 
 const handUI = {
 
   Left: {
+
     panel:
       document.querySelector("#leftPanel"),
 
@@ -92,6 +100,7 @@ const handUI = {
 
 
   Right: {
+
     panel:
       document.querySelector("#rightPanel"),
 
@@ -135,27 +144,34 @@ const handUI = {
 
 
 // ============================================================
-// STATE
+// RUNTIME STATE
 // ============================================================
 
-let handTracker = null;
+let handTracker =
+  null;
 
-let previousVideoTime = -1;
+let previousVideoTime =
+  -1;
 
 
-// ------------------------------------------------------------
-// Raw feature history
-// ------------------------------------------------------------
+// Raw CV history.
+//
+// extractHandFeatures() needs the previous
+// hand position to calculate movement speed.
 
 const previousFeatureStates = {
-  Left: null,
-  Right: null,
+
+  Left:
+    null,
+
+  Right:
+    null,
 };
 
 
-// ------------------------------------------------------------
-// Signal processors
-// ------------------------------------------------------------
+// ============================================================
+// SIGNAL PROCESSING
+// ============================================================
 
 const signalProcessors = {
 
@@ -167,12 +183,47 @@ const signalProcessors = {
 };
 
 
-// ------------------------------------------------------------
-// Personal Mapping Engine
-// ------------------------------------------------------------
+// ============================================================
+// PERSONAL MAPPING ENGINE
+// ============================================================
 
 const mappingEngine =
   createMappingEngine();
+
+
+// ============================================================
+// PERSONAL MAPPING UI
+// ============================================================
+
+const mappingUI =
+  createMappingStudioUI({
+
+    container:
+      mappingStudioContainer,
+
+    engine:
+      mappingEngine,
+  });
+
+
+// ============================================================
+// EXPOSE DEVELOPMENT API
+// ============================================================
+
+window.mappingStudio =
+  mappingEngine;
+
+window.crossModalHands =
+  [];
+
+window.crossModalMapping = {
+
+  profile:
+    mappingEngine.getProfile(),
+
+  output:
+    [],
+};
 
 
 // ============================================================
@@ -190,8 +241,10 @@ async function startSession() {
   startButton.disabled =
     true;
 
+
   startButton.textContent =
     "INITIALIZING...";
+
 
   statusElement.textContent =
     "LOADING";
@@ -226,7 +279,8 @@ async function startSession() {
             },
           },
 
-          audio: false,
+          audio:
+            false,
         });
 
 
@@ -256,10 +310,6 @@ async function startSession() {
     startButton.textContent =
       "SESSION ACTIVE";
 
-
-    // --------------------------------------------------------
-    // Start CV loop
-    // --------------------------------------------------------
 
     requestAnimationFrame(
       detectionLoop
@@ -303,7 +353,7 @@ async function startSession() {
 
 
 // ============================================================
-// DETECTION LOOP
+// CV LOOP
 // ============================================================
 
 function detectionLoop() {
@@ -320,7 +370,9 @@ function detectionLoop() {
 
     const result =
       handTracker.detectForVideo(
+
         video,
+
         performance.now()
       );
 
@@ -338,7 +390,7 @@ function detectionLoop() {
 
 
 // ============================================================
-// PROCESS DETECTION RESULT
+// PROCESS MEDIAPIPE RESULT
 // ============================================================
 
 function processDetectionResult(
@@ -349,9 +401,13 @@ function processDetectionResult(
 
 
   ctx.clearRect(
+
     0,
+
     0,
+
     canvas.width,
+
     canvas.height
   );
 
@@ -406,17 +462,23 @@ function processDetectionResult(
       [];
 
 
+    const emptyMappingOutput =
+      [];
+
+
     window.crossModalMapping = {
 
       profile:
         mappingEngine.getProfile(),
 
-      output: [],
+      output:
+        emptyMappingOutput,
     };
 
 
-    window.mappingStudio =
-      mappingEngine;
+    mappingUI.updateLiveValues(
+      emptyMappingOutput
+    );
 
 
     return;
@@ -424,7 +486,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // GLOBAL TRACKING STATUS
+  // GLOBAL TRACKING DATA
   // ==========================================================
 
   landmarkCount.textContent =
@@ -495,7 +557,8 @@ function processDetectionResult(
   // ==========================================================
 
   for (
-    const side of [
+    const side
+    of [
       "Left",
       "Right",
     ]
@@ -525,13 +588,13 @@ function processDetectionResult(
   }
 
 
+  // ==========================================================
+  // BUILD CURRENT INPUT DATA
+  // ==========================================================
+
   const currentData =
     [];
 
-
-  // ==========================================================
-  // PROCESS EACH HAND
-  // ==========================================================
 
   for (
     const hand
@@ -539,14 +602,18 @@ function processDetectionResult(
   ) {
 
     const {
+
       label,
+
       confidence,
+
       landmarks,
+
     } = hand;
 
 
     // --------------------------------------------------------
-    // 1. RAW FEATURES
+    // 1. RAW FEATURE EXTRACTION
     // --------------------------------------------------------
 
     const rawFeatures =
@@ -607,7 +674,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // 3. DRAW HAND
+    // 3. HAND SKELETON
     // --------------------------------------------------------
 
     drawHandSkeleton(
@@ -617,7 +684,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // 4. UPDATE UI
+    // 4. TECHNICAL FEATURE UI
     // --------------------------------------------------------
 
     if (
@@ -626,15 +693,18 @@ function processDetectionResult(
     ) {
 
       updateHandPanel(
+
         label,
+
         features,
+
         confidence
       );
     }
 
 
     // --------------------------------------------------------
-    // 5. PREPARE MAPPING INPUT
+    // 5. BUILD NORMALIZED INPUT OBJECT
     // --------------------------------------------------------
 
     currentData.push({
@@ -662,7 +732,7 @@ function processDetectionResult(
         features.speed,
 
 
-      // Gesture event states
+      // Gesture states
 
       pinchActive:
         features.pinchActive,
@@ -685,7 +755,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // PERSONAL MAPPING LAYER
+  // PERSONAL MAPPING ENGINE
   // ==========================================================
 
   const mappingOutput =
@@ -705,26 +775,17 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // DEVELOPMENT API
-  //
-  // Console example:
-  //
-  // window.mappingStudio.getProfile()
-  //
-  // window.mappingStudio.updateTarget(
-  //   "left-y",
-  //   "music",
-  //   "texture"
-  // )
+  // PERSONAL MAPPING UI LIVE VALUES
   // ==========================================================
 
-  window.mappingStudio =
-    mappingEngine;
+  mappingUI.updateLiveValues(
+    mappingOutput
+  );
 }
 
 
 // ============================================================
-// MEDIAPIPE RESULT -> HAND OBJECTS
+// PARSE MEDIAPIPE HANDS
 // ============================================================
 
 function getDetectedHands(
@@ -798,7 +859,7 @@ function getDetectedHands(
 
 
 // ============================================================
-// UPDATE HAND PANEL
+// UPDATE HAND DATA PANEL
 // ============================================================
 
 function updateHandPanel(
@@ -839,42 +900,57 @@ function updateHandPanel(
 
 
   setMetric(
+
     ui.xValue,
+
     ui.xBar,
+
     features.x
   );
 
 
   setMetric(
+
     ui.yValue,
+
     ui.yBar,
+
     features.y
   );
 
 
   setMetric(
+
     ui.pinchValue,
+
     ui.pinchBar,
+
     features.pinch
   );
 
 
   setMetric(
+
     ui.openValue,
+
     ui.openBar,
+
     features.openness
   );
 
 
   setMetric(
+
     ui.speedValue,
+
     ui.speedBar,
+
     features.speed
   );
 
 
   // ----------------------------------------------------------
-  // Pinch visual state
+  // Pinch UI feedback
   // ----------------------------------------------------------
 
   if (
@@ -901,7 +977,7 @@ function updateHandPanel(
 
 
 // ============================================================
-// CLEAR HAND PANEL
+// CLEAR HAND DATA PANEL
 // ============================================================
 
 function clearHandPanel(
@@ -992,7 +1068,7 @@ function clearHandPanel(
 
 
 // ============================================================
-// METRIC UI
+// FEATURE BAR
 // ============================================================
 
 function setMetric(
@@ -1079,9 +1155,9 @@ function drawHandSkeleton(
       : "#FF7746";
 
 
-  // ----------------------------------------------------------
-  // Skeleton lines
-  // ----------------------------------------------------------
+  // ==========================================================
+  // LINES
+  // ==========================================================
 
   ctx.strokeStyle =
     color;
@@ -1138,9 +1214,9 @@ function drawHandSkeleton(
   }
 
 
-  // ----------------------------------------------------------
-  // Landmark points
-  // ----------------------------------------------------------
+  // ==========================================================
+  // POINTS
+  // ==========================================================
 
   landmarks.forEach(
 
@@ -1208,7 +1284,7 @@ function drawHandSkeleton(
 
 
 // ============================================================
-// CANVAS
+// RESIZE CANVAS
 // ============================================================
 
 function resizeCanvas() {

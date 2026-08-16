@@ -364,3 +364,395 @@ aside > p {
       1fr;
   }
 }
+
+
+/* ==========================================================
+   PERSONAL MAPPING STUDIO
+========================================================== */
+
+.mapping-studio-shell {
+  margin-top: 22px;
+}
+
+
+.mapping-studio {
+  background: #ffffff;
+
+  border:
+    1px solid var(--line);
+
+  padding: 24px;
+}
+
+
+.mapping-studio-header {
+  display: flex;
+
+  justify-content:
+    space-between;
+
+  align-items:
+    flex-start;
+
+  gap: 40px;
+
+  margin-bottom: 32px;
+}
+
+
+.mapping-studio-header h2 {
+  margin:
+    6px 0 10px;
+
+  font-size:
+    clamp(
+      28px,
+      3vw,
+      46px
+    );
+
+  font-weight: 500;
+
+  letter-spacing:
+    -0.035em;
+}
+
+
+.mapping-description {
+  margin: 0;
+
+  max-width: 530px;
+
+  line-height: 1.6;
+
+  color: #5a5a58;
+
+  font-size: 13px;
+}
+
+
+.mapping-profile-controls {
+  min-width: 310px;
+}
+
+
+.mapping-profile-controls label {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+
+  font-size: 9px;
+
+  letter-spacing:
+    0.1em;
+}
+
+
+.mapping-profile-controls input {
+  width: 100%;
+
+  padding: 12px;
+
+  border:
+    1px solid var(--line);
+
+  background:
+    #f8f8f6;
+
+  font: inherit;
+}
+
+
+.mapping-actions {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 10px;
+}
+
+
+.mapping-button {
+  margin: 0;
+
+  width: auto;
+
+  padding:
+    11px 15px;
+
+  font-size: 9px;
+}
+
+
+.mapping-button.primary {
+  background:
+    var(--blue);
+}
+
+
+.mapping-button.secondary {
+  background:
+    #ecece8;
+}
+
+
+.mapping-column-labels {
+  display: grid;
+
+  grid-template-columns:
+    1.45fr
+    36px
+    1fr
+    1fr
+    1fr
+    80px;
+
+  gap: 10px;
+
+  padding:
+    0 12px 8px;
+
+  font-size: 8px;
+
+  letter-spacing:
+    0.1em;
+
+  color: #777;
+}
+
+
+.mapping-rules {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+
+.mapping-rule {
+  display: grid;
+
+  grid-template-columns:
+    1.45fr
+    36px
+    1fr
+    1fr
+    1fr
+    80px;
+
+  gap: 10px;
+
+  align-items:
+    stretch;
+
+  padding: 12px;
+
+  border:
+    1px solid var(--line);
+
+  background:
+    #f8f8f6;
+
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+
+.mapping-rule.mapping-active {
+  border-color:
+    var(--blue);
+
+  background:
+    #f3f7ff;
+}
+
+
+.mapping-source {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1.3fr;
+
+  gap: 7px;
+}
+
+
+.mapping-rule select {
+  width: 100%;
+
+  min-width: 0;
+
+  padding:
+    10px 9px;
+
+  border:
+    1px solid #d5d5d0;
+
+  background:
+    #ffffff;
+
+  color:
+    #171717;
+
+  font: inherit;
+
+  font-size: 11px;
+}
+
+
+.mapping-rule select:disabled {
+  opacity: 0.35;
+}
+
+
+.mapping-arrow {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 18px;
+
+  color: var(--orange);
+}
+
+
+.mapping-target {
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content:
+    space-between;
+
+  gap: 6px;
+}
+
+
+.mapping-toggle {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  font-size: 8px;
+
+  letter-spacing:
+    0.08em;
+}
+
+
+.mapping-toggle input {
+  width: 11px;
+
+  height: 11px;
+
+  margin: 0;
+}
+
+
+.mapping-live {
+  position: relative;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content:
+    center;
+
+  align-items: center;
+
+  border-left:
+    1px solid var(--line);
+}
+
+
+.mapping-live > span {
+  font-size: 7px;
+
+  letter-spacing:
+    0.1em;
+}
+
+
+.mapping-live strong {
+  margin-top: 5px;
+
+  font-size: 17px;
+
+  font-weight: 500;
+}
+
+
+.remove-mapping {
+  position: absolute;
+
+  top: -9px;
+  right: -8px;
+
+  width: 20px;
+  height: 20px;
+
+  margin: 0;
+
+  padding: 0;
+
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  border:
+    1px solid var(--line);
+
+  font-size: 14px;
+
+  line-height: 18px;
+
+  font-weight: 400;
+}
+
+
+@media (
+  max-width: 1100px
+) {
+
+  .mapping-studio-header {
+    flex-direction: column;
+  }
+
+
+  .mapping-profile-controls {
+    width: 100%;
+
+    min-width: 0;
+  }
+
+
+  .mapping-column-labels {
+    display: none;
+  }
+
+
+  .mapping-rule {
+    grid-template-columns:
+      1fr 30px 1fr;
+  }
+
+
+  .mapping-target {
+    grid-column:
+      span 1;
+  }
+
+
+  .mapping-live {
+    border-left: 0;
+  }
+}
