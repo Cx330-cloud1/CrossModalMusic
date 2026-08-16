@@ -21,6 +21,10 @@ import {
   createMusicEngine,
 } from "./audio/musicEngine.js";
 
+import {
+  createVisualEngine,
+} from "./visual/visualEngine.js";
+
 
 // ============================================================
 // CORE DOM
@@ -52,6 +56,9 @@ const handStatus =
 
 const mappingStudioContainer =
   document.querySelector("#mappingStudio");
+
+const visualCanvas =
+  document.querySelector("#visualCanvas");
 
 
 // ============================================================
@@ -203,6 +210,16 @@ const musicEngine =
 
 
 // ============================================================
+// VISUAL ENGINE
+// ============================================================
+
+const visualEngine =
+  createVisualEngine(
+    visualCanvas
+  );
+
+
+// ============================================================
 // PERSONAL MAPPING UI
 // ============================================================
 
@@ -218,7 +235,7 @@ const mappingUI =
 
 
 // ============================================================
-// DEVELOPMENT API
+// DEVELOPMENT / DEBUG API
 // ============================================================
 
 window.mappingStudio =
@@ -267,13 +284,13 @@ async function startSession() {
   // ==========================================================
   // START AUDIO
   //
-  // Browser audio must be initialized from a user gesture.
-  // START SESSION is that user gesture.
+  // Tone.js must be started as a result of user interaction.
   // ==========================================================
 
   try {
 
     await musicEngine.start();
+
 
     window.crossModalAudio =
       musicEngine.getState();
@@ -511,9 +528,16 @@ function processDetectionResult(
     };
 
 
+    // Mapping UI returns to inactive state.
+
     mappingUI.updateLiveValues(
       emptyMappingOutput
     );
+
+
+    // Reset visual expression.
+
+    visualEngine.clear();
 
 
     window.crossModalAudio =
@@ -795,6 +819,9 @@ function processDetectionResult(
 
   // ==========================================================
   // PERSONAL MAPPING ENGINE
+  //
+  // Gesture signals are translated into user-defined
+  // music / visual / haptic semantics here.
   // ==========================================================
 
   const mappingOutput =
@@ -814,7 +841,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // MAPPING STUDIO LIVE VALUES
+  // MAPPING STUDIO
   // ==========================================================
 
   mappingUI.updateLiveValues(
@@ -823,15 +850,26 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // MUSIC ENGINE
-  //
-  // Mapping semantic output is now translated into sound.
+  // MUSIC OUTPUT
   // ==========================================================
 
   musicEngine.process(
     mappingOutput
   );
 
+
+  // ==========================================================
+  // VISUAL OUTPUT
+  // ==========================================================
+
+  visualEngine.process(
+    mappingOutput
+  );
+
+
+  // ==========================================================
+  // DEBUG AUDIO STATE
+  // ==========================================================
 
   window.crossModalAudio =
     musicEngine.getState();
@@ -1338,7 +1376,7 @@ function drawHandSkeleton(
 
 
 // ============================================================
-// CANVAS RESIZE
+// CAMERA CANVAS RESIZE
 // ============================================================
 
 function resizeCanvas() {
