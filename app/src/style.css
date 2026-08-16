@@ -920,3 +920,463 @@ aside > p {
 
   font-weight: 500;
 }
+
+
+/* ==========================================================
+   VIRTUAL HAPTIC BODY MAP
+========================================================== */
+
+.haptic-output-section {
+  margin-top: 22px;
+  margin-bottom: 40px;
+
+  padding: 24px;
+
+  background: #ffffff;
+
+  border:
+    1px solid var(--line);
+}
+
+
+.haptic-output-header {
+  display: flex;
+
+  align-items:
+    flex-end;
+
+  justify-content:
+    space-between;
+
+  gap: 30px;
+
+  margin-bottom: 20px;
+}
+
+
+.haptic-output-header h2 {
+  margin:
+    6px 0 8px;
+
+  font-size:
+    clamp(
+      28px,
+      3vw,
+      46px
+    );
+
+  font-weight: 500;
+
+  letter-spacing:
+    -0.035em;
+}
+
+
+.haptic-output-header p {
+  max-width: 560px;
+
+  margin: 0;
+
+  color: #5a5a58;
+
+  font-size: 13px;
+
+  line-height: 1.6;
+}
+
+
+.haptic-system-state {
+  display: flex;
+
+  gap: 24px;
+}
+
+
+.haptic-system-state > div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  min-width: 80px;
+}
+
+
+.haptic-system-state span {
+  font-size: 7px;
+
+  letter-spacing:
+    0.1em;
+
+  color: #777;
+}
+
+
+.haptic-system-state strong {
+  font-size: 11px;
+
+  font-weight: 500;
+}
+
+
+/* ==========================================================
+   BODY MAP
+========================================================== */
+
+.haptic-body-map {
+  position: relative;
+
+  height:
+    clamp(
+      330px,
+      38vw,
+      520px
+    );
+
+  overflow: hidden;
+
+  border:
+    1px solid var(--line);
+
+  background:
+    #f5f5f2;
+}
+
+
+.body-map-title {
+  position: absolute;
+
+  top: 18px;
+
+  left: 18px;
+
+  font-size: 8px;
+
+  letter-spacing:
+    0.12em;
+}
+
+
+/* ==========================================================
+   CLAVICLE GUIDES
+========================================================== */
+
+.clavicle-line {
+  position: absolute;
+
+  top: 49%;
+
+  width: 30%;
+
+  height: 1px;
+
+  background:
+    #bdbdb8;
+}
+
+
+.clavicle-left {
+  left: 20%;
+
+  transform:
+    rotate(-8deg);
+
+  transform-origin:
+    right center;
+}
+
+
+.clavicle-right {
+  right: 20%;
+
+  transform:
+    rotate(8deg);
+
+  transform-origin:
+    left center;
+}
+
+
+.body-center-line {
+  position: absolute;
+
+  top: 42%;
+
+  left: 50%;
+
+  width: 1px;
+
+  height: 32%;
+
+  background:
+    #d2d2cd;
+}
+
+
+/* ==========================================================
+   HAPTIC POINT
+========================================================== */
+
+.haptic-point {
+  --haptic-level: 0;
+
+  position: absolute;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+}
+
+
+.haptic-point > span {
+  position: relative;
+
+  display: block;
+
+  width: 24px;
+
+  height: 24px;
+
+  border-radius: 50%;
+
+  border:
+    1.5px solid #171717;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.8
+    );
+
+  transition:
+    transform 80ms linear,
+    background 80ms linear;
+}
+
+
+.haptic-point > span::before,
+.haptic-point > span::after {
+  content: "";
+
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  border-radius: 50%;
+
+  transform:
+    translate(
+      -50%,
+      -50%
+    );
+
+  pointer-events: none;
+}
+
+
+.haptic-point > span::before {
+  width:
+    calc(
+      28px +
+      42px *
+      var(--haptic-level)
+    );
+
+  height:
+    calc(
+      28px +
+      42px *
+      var(--haptic-level)
+    );
+
+  border:
+    1px solid
+    rgba(
+      255,
+      119,
+      70,
+      calc(
+        var(--haptic-level) *
+        0.6
+      )
+    );
+}
+
+
+.haptic-point > span::after {
+  width:
+    calc(
+      35px +
+      70px *
+      var(--haptic-level)
+    );
+
+  height:
+    calc(
+      35px +
+      70px *
+      var(--haptic-level)
+    );
+
+  background:
+    rgba(
+      255,
+      119,
+      70,
+      calc(
+        var(--haptic-level) *
+        0.07
+      )
+    );
+}
+
+
+.haptic-point.active > span {
+  transform:
+    scale(
+      calc(
+        1 +
+        var(--haptic-level) *
+        0.22
+      )
+    );
+
+  background:
+    rgba(
+      255,
+      119,
+      70,
+      calc(
+        0.12 +
+        var(--haptic-level) *
+        0.72
+      )
+    );
+
+  border-color:
+    var(--orange);
+}
+
+
+.haptic-point > div {
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.haptic-point strong {
+  font-size: 10px;
+
+  font-weight: 600;
+}
+
+
+.haptic-point small {
+  margin-top: 2px;
+
+  font-size: 8px;
+
+  color: #777;
+}
+
+
+/* ==========================================================
+   PHYSICAL POSITION
+========================================================== */
+
+.haptic-l2 {
+  left: 24%;
+  top: 54%;
+}
+
+
+.haptic-l1 {
+  left: 42%;
+  top: 48%;
+}
+
+
+.haptic-r1 {
+  left: 58%;
+  top: 48%;
+}
+
+
+.haptic-r2 {
+  left: 76%;
+  top: 54%;
+}
+
+
+/* ==========================================================
+   HARDWARE NOTE
+========================================================== */
+
+.haptic-body-note {
+  position: absolute;
+
+  left: 18px;
+  bottom: 18px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+
+.haptic-body-note span {
+  font-size: 7px;
+
+  letter-spacing:
+    0.11em;
+
+  color: #777;
+}
+
+
+.haptic-body-note strong {
+  font-size: 10px;
+
+  font-weight: 500;
+}
+
+
+@media (
+  max-width: 850px
+) {
+
+  .haptic-output-header {
+    flex-direction: column;
+
+    align-items:
+      flex-start;
+  }
+
+
+  .haptic-system-state {
+    width: 100%;
+
+    justify-content:
+      space-between;
+  }
+
+
+  .haptic-point > div {
+    display: none;
+  }
+}

@@ -50,7 +50,9 @@
 
     <main>
 
-      <!-- CAMERA -->
+      <!-- ===================================================
+           CAMERA
+      ==================================================== -->
 
       <section class="camera-section">
 
@@ -99,7 +101,7 @@
 
 
       <!-- ===================================================
-           DUAL HAND DATA
+           DUAL-HAND DATA
       ==================================================== -->
 
       <aside>
@@ -548,9 +550,7 @@
 
 
     <!-- =====================================================
-         02 / PERSONAL MAPPING STUDIO
-
-         mappingUI.js renders the entire interface here.
+         02 / PERSONAL MAPPING
     ====================================================== -->
 
     <section
@@ -559,67 +559,291 @@
     >
     </section>
 
-<section class="visual-output-section">
 
-  <div class="visual-output-header">
+    <!-- =====================================================
+         03 / VISUAL OUTPUT
+    ====================================================== -->
 
-    <div>
+    <section class="visual-output-section">
 
-      <p class="eyebrow">
-        03 / MULTISENSORY OUTPUT
-      </p>
+      <div class="visual-output-header">
 
-      <h2>
-        Visual Expression
-      </h2>
+        <div>
 
-      <p>
-        The same personal mapping is translated
-        into a live visual language.
-      </p>
+          <p class="eyebrow">
+            03 / MULTISENSORY OUTPUT
+          </p>
 
-    </div>
+          <h2>
+            Visual Expression
+          </h2>
 
+          <p>
+            The same personal mapping is translated
+            into a live visual language.
+          </p>
 
-    <div class="visual-legend">
-
-      <span>
-        <i class="legend-blue"></i>
-        CONTINUOUS
-      </span>
-
-      <span>
-        <i class="legend-orange"></i>
-        EVENT
-      </span>
-
-    </div>
-
-  </div>
+        </div>
 
 
-  <div class="visual-stage">
+        <div class="visual-legend">
 
-    <canvas
-      id="visualCanvas"
-    ></canvas>
+          <span>
+
+            <i class="legend-blue"></i>
+
+            CONTINUOUS
+
+          </span>
 
 
-    <div class="visual-stage-label">
+          <span>
 
-      <span>
-        LIVE CROSS-MODAL VISUAL
-      </span>
+            <i class="legend-orange"></i>
 
-      <strong>
-        Gesture → Mapping → Visual
-      </strong>
+            EVENT
 
-    </div>
+          </span>
 
-  </div>
+        </div>
 
-</section>
+      </div>
+
+
+      <div class="visual-stage">
+
+        <canvas
+          id="visualCanvas"
+        ></canvas>
+
+
+        <div class="visual-stage-label">
+
+          <span>
+            LIVE CROSS-MODAL VISUAL
+          </span>
+
+          <strong>
+            Gesture → Mapping → Visual
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         04 / HAPTIC OUTPUT
+    ====================================================== -->
+
+    <section class="haptic-output-section">
+
+      <div class="haptic-output-header">
+
+        <div>
+
+          <p class="eyebrow">
+            04 / BODY OUTPUT
+          </p>
+
+          <h2>
+            Virtual Haptic Body Map
+          </h2>
+
+          <p>
+            A four-point clavicle simulation for validating
+            spatial vibration patterns before connecting
+            the physical wearable.
+          </p>
+
+        </div>
+
+
+        <div class="haptic-system-state">
+
+          <div>
+
+            <span>
+              STATUS
+            </span>
+
+            <strong id="hapticStatus">
+              IDLE
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              PATTERN
+            </span>
+
+            <strong id="hapticPattern">
+              IDLE
+            </strong>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              INTENSITY
+            </span>
+
+            <strong id="hapticIntensity">
+              0.00
+            </strong>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- ===================================================
+           FOUR-POINT CLAVICLE MAP
+      ==================================================== -->
+
+      <div
+        id="hapticBodyMap"
+        class="haptic-body-map"
+      >
+
+        <div class="body-map-title">
+          FOUR-POINT CLAVICLE ARRAY
+        </div>
+
+
+        <div
+          class="clavicle-line clavicle-left"
+        ></div>
+
+        <div
+          class="clavicle-line clavicle-right"
+        ></div>
+
+
+        <!-- LEFT OUTER -->
+
+        <div
+          class="haptic-point haptic-l2"
+          data-haptic-point="L2"
+        >
+
+          <span></span>
+
+          <div>
+
+            <strong>
+              L2
+            </strong>
+
+            <small class="haptic-point-value">
+              0.00
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <!-- LEFT INNER -->
+
+        <div
+          class="haptic-point haptic-l1"
+          data-haptic-point="L1"
+        >
+
+          <span></span>
+
+          <div>
+
+            <strong>
+              L1
+            </strong>
+
+            <small class="haptic-point-value">
+              0.00
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <!-- RIGHT INNER -->
+
+        <div
+          class="haptic-point haptic-r1"
+          data-haptic-point="R1"
+        >
+
+          <span></span>
+
+          <div>
+
+            <strong>
+              R1
+            </strong>
+
+            <small class="haptic-point-value">
+              0.00
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <!-- RIGHT OUTER -->
+
+        <div
+          class="haptic-point haptic-r2"
+          data-haptic-point="R2"
+        >
+
+          <span></span>
+
+          <div>
+
+            <strong>
+              R2
+            </strong>
+
+            <small class="haptic-point-value">
+              0.00
+            </small>
+
+          </div>
+
+        </div>
+
+
+        <div class="body-center-line"></div>
+
+
+        <div class="haptic-body-note">
+
+          <span>
+            SOFTWARE SIMULATION
+          </span>
+
+          <strong>
+            Future output: 4 × LRA actuators
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
   </div>
 
 

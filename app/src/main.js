@@ -25,6 +25,10 @@ import {
   createVisualEngine,
 } from "./visual/visualEngine.js";
 
+import {
+  createHapticEngine,
+} from "./haptics/hapticEngine.js";
+
 
 // ============================================================
 // CORE DOM
@@ -59,6 +63,11 @@ const mappingStudioContainer =
 
 const visualCanvas =
   document.querySelector("#visualCanvas");
+
+const hapticOutputSection =
+  document.querySelector(
+    ".haptic-output-section"
+  );
 
 
 // ============================================================
@@ -220,6 +229,23 @@ const visualEngine =
 
 
 // ============================================================
+// HAPTIC ENGINE
+//
+// Important:
+// We pass the whole haptic output section rather than only
+// #hapticBodyMap because the status indicators live above
+// the body map.
+// ============================================================
+
+const hapticEngine =
+  createHapticEngine({
+
+    root:
+      hapticOutputSection,
+  });
+
+
+// ============================================================
 // PERSONAL MAPPING UI
 // ============================================================
 
@@ -241,8 +267,10 @@ const mappingUI =
 window.mappingStudio =
   mappingEngine;
 
+
 window.crossModalHands =
   [];
+
 
 window.crossModalMapping = {
 
@@ -253,8 +281,13 @@ window.crossModalMapping = {
     [],
 };
 
+
 window.crossModalAudio =
   musicEngine.getState();
+
+
+window.crossModalHaptics =
+  hapticEngine.getState();
 
 
 // ============================================================
@@ -284,7 +317,7 @@ async function startSession() {
   // ==========================================================
   // START AUDIO
   //
-  // Tone.js must be started as a result of user interaction.
+  // Tone.js must be initialized after direct user interaction.
   // ==========================================================
 
   try {
@@ -528,20 +561,39 @@ function processDetectionResult(
     };
 
 
-    // Mapping UI returns to inactive state.
+    // --------------------------------------------------------
+    // Reset mapping UI
+    // --------------------------------------------------------
 
     mappingUI.updateLiveValues(
       emptyMappingOutput
     );
 
 
-    // Reset visual expression.
+    // --------------------------------------------------------
+    // Reset visual output
+    // --------------------------------------------------------
 
     visualEngine.clear();
 
 
+    // --------------------------------------------------------
+    // Reset virtual haptic output
+    // --------------------------------------------------------
+
+    hapticEngine.clear();
+
+
+    // --------------------------------------------------------
+    // Debug state
+    // --------------------------------------------------------
+
     window.crossModalAudio =
       musicEngine.getState();
+
+
+    window.crossModalHaptics =
+      hapticEngine.getState();
 
 
     return;
@@ -777,7 +829,7 @@ function processDetectionResult(
       confidence,
 
 
-      // Continuous features
+      // Continuous signals
 
       x:
         features.x,
@@ -795,7 +847,7 @@ function processDetectionResult(
         features.speed,
 
 
-      // Gesture event states
+      // Gesture state / events
 
       pinchActive:
         features.pinchActive,
@@ -820,8 +872,11 @@ function processDetectionResult(
   // ==========================================================
   // PERSONAL MAPPING ENGINE
   //
-  // Gesture signals are translated into user-defined
-  // music / visual / haptic semantics here.
+  // Gesture signals
+  //       ↓
+  // User-defined semantic mappings
+  //       ↓
+  // Music + Visual + Haptic
   // ==========================================================
 
   const mappingOutput =
@@ -841,7 +896,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // MAPPING STUDIO
+  // MAPPING STUDIO UI
   // ==========================================================
 
   mappingUI.updateLiveValues(
@@ -868,11 +923,24 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // DEBUG AUDIO STATE
+  // HAPTIC OUTPUT
+  // ==========================================================
+
+  hapticEngine.process(
+    mappingOutput
+  );
+
+
+  // ==========================================================
+  // DEBUG STATE
   // ==========================================================
 
   window.crossModalAudio =
     musicEngine.getState();
+
+
+  window.crossModalHaptics =
+    hapticEngine.getState();
 }
 
 
@@ -1248,7 +1316,7 @@ function drawHandSkeleton(
 
 
   // ==========================================================
-  // LINES
+  // SKELETON LINES
   // ==========================================================
 
   ctx.strokeStyle =

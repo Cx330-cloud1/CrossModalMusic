@@ -2,45 +2,102 @@ import * as Tone from "tone";
 
 
 // ============================================================
-// CROSS-MODAL MUSIC ENGINE
+// MUSIC ENGINE V2
 //
-// Mapping semantic output
-//          ↓
-// Pitch / Trigger / Timbre / Intensity
-//          ↓
-// Mallet voice + Ambient Pad
+// Gesture
+//   ↓
+// Personal Mapping
+//   ↓
+// 3-octave scale system
+//   ↓
+// Guided / Performance interaction
+//   ↓
+// Mallet + Ambient Pad
 // ============================================================
 
+const SETTINGS_KEY =
+  "cross-modal-music-settings-v2";
 
-// C Major Pentatonic
+
+// MIDI range:
 //
-// We deliberately quantize continuous hand position
-// into a musical scale so that spatial movement remains
-// expressive without producing arbitrary out-of-key notes.
+// C3 = 48
+// C6 = 84
 
-const SCALE = [
-  "C4",
-  "D4",
-  "E4",
-  "G4",
-  "A4",
-  "C5",
-  "D5",
-  "E5",
-  "G5",
-  "A5",
-];
+const MIDI_MIN = 48;
+const MIDI_MAX = 84;
 
 
-// Soft ambient harmonies.
-// Index is associated with the scale degree.
+const SCALE_INTERVALS = {
 
-const PAD_CHORDS = [
-  ["C3", "G3", "D4"],
-  ["D3", "A3", "E4"],
-  ["E3", "B3", "G4"],
-  ["G3", "D4", "A4"],
-  ["A3", "E4", "B4"],
+  pentatonic: [
+    0,
+    2,
+    4,
+    7,
+    9,
+  ],
+
+  major: [
+    0,
+    2,
+    4,
+    5,
+    7,
+    9,
+    11,
+  ],
+
+  minor: [
+    0,
+    2,
+    3,
+    5,
+    7,
+    8,
+    10,
+  ],
+
+  dorian: [
+    0,
+    2,
+    3,
+    5,
+    7,
+    9,
+    10,
+  ],
+
+  chromatic: [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+  ],
+};
+
+
+const NOTE_NAMES = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
 ];
 
 
@@ -50,69 +107,122 @@ const PAD_CHORDS = [
 
 export function createMusicEngine() {
 
-  let initialized = false;
-
-  let mallet = null;
-  let malletFilter = null;
-
-  let pad = null;
-  let padFilter = null;
-
-  let reverb = null;
-  let master = null;
+  const settings =
+    loadSettings();
 
 
-  // ----------------------------------------------------------
-  // Musical state
-  // ----------------------------------------------------------
+  let initialized =
+    false;
+
+
+  let scaleNotes =
+    buildScaleNotes(
+      settings.scale
+    );
+
+
+  // ==========================================================
+  // AUDIO NODES
+  // ==========================================================
+
+  let master =
+    null;
+
+  let reverb =
+    null;
+
+  let mallet =
+    null;
+
+  let malletFilter =
+    null;
+
+  let previewSynth =
+    null;
+
+  let pad =
+    null;
+
+  let padFilter =
+    null;
+
+
+  // ==========================================================
+  // PERFORMANCE STATE
+  // ==========================================================
 
   const state = {
+
+    scale:
+      settings.scale,
+
+    mode:
+      settings.mode,
 
     pitchValue:
       0.5,
 
     note:
-      "A4",
+      "",
 
     scaleIndex:
-      4,
+      0,
 
     timbre:
       0.5,
 
     intensity:
-      0.45,
+      0.35,
+
+    padAmount:
+      0.35,
 
     texture:
-      0.4,
+      0.35,
 
     volume:
       0.72,
+
+    rhythm:
+      0,
+
+    lastVelocity:
+      0.5,
   };
 
-
-  // Prevent trigger mappings from firing continuously
-  // every animation frame.
 
   const previousRuleValues =
     new Map();
 
 
-  let lastNoteTime =
+  let lastFormalNoteTime =
     0;
+
+
+  let lastPreviewTime =
+    0;
+
+
+  let lastPreviewNote =
+    null;
 
 
   let lastPadTime =
     0;
 
 
+  updatePitch(
+    state.pitchValue,
+    false
+  );
+
+
   // ==========================================================
-  // START AUDIO
+  // START
   // ==========================================================
 
   async function start() {
 
-    // Tone.js requires this to happen after user interaction.
     await Tone.start();
 
 
@@ -140,7 +250,7 @@ export function createMusicEngine() {
 
 
     console.log(
-      "[Music Engine] Audio ready"
+      "[Music Engine V2] Audio ready"
     );
   }
 
@@ -152,7 +262,7 @@ export function createMusicEngine() {
   function setupAudioGraph() {
 
     // --------------------------------------------------------
-    // Master
+    // MASTER
     // --------------------------------------------------------
 
     master =
@@ -163,7 +273,7 @@ export function createMusicEngine() {
 
 
     // --------------------------------------------------------
-    // Shared space / reverb
+    // SPACE
     // --------------------------------------------------------
 
     reverb =
@@ -173,7 +283,7 @@ export function createMusicEngine() {
 
 
     reverb.wet.value =
-      0.28;
+      0.24;
 
 
     reverb.connect(
@@ -182,10 +292,7 @@ export function createMusicEngine() {
 
 
     // --------------------------------------------------------
-    // MALLET / GLOCK VOICE
-    //
-    // Short FM envelope:
-    // clear attack + soft metallic tail
+    // MALLET FILTER
     // --------------------------------------------------------
 
     malletFilter =
@@ -199,6 +306,10 @@ export function createMusicEngine() {
       reverb
     );
 
+
+    // --------------------------------------------------------
+    // MAIN MALLET
+    // --------------------------------------------------------
 
     mallet =
       new Tone.FMSynth({
@@ -223,10 +334,10 @@ export function createMusicEngine() {
             0.32,
 
           sustain:
-            0.04,
+            0.035,
 
           release:
-            0.85,
+            0.8,
         },
 
         modulation: {
@@ -240,13 +351,13 @@ export function createMusicEngine() {
             0.001,
 
           decay:
-            0.24,
+            0.23,
 
           sustain:
             0,
 
           release:
-            0.35,
+            0.3,
         },
 
         volume:
@@ -260,12 +371,72 @@ export function createMusicEngine() {
 
 
     // --------------------------------------------------------
+    // GUIDED PREVIEW VOICE
+    //
+    // Much quieter than formal performance notes.
+    // --------------------------------------------------------
+
+    previewSynth =
+      new Tone.FMSynth({
+
+        harmonicity:
+          2,
+
+        modulationIndex:
+          2.5,
+
+        oscillator: {
+          type:
+            "sine",
+        },
+
+        envelope: {
+
+          attack:
+            0.001,
+
+          decay:
+            0.08,
+
+          sustain:
+            0,
+
+          release:
+            0.15,
+        },
+
+        modulationEnvelope: {
+
+          attack:
+            0.001,
+
+          decay:
+            0.05,
+
+          sustain:
+            0,
+
+          release:
+            0.1,
+        },
+
+        volume:
+          -21,
+      });
+
+
+    previewSynth.connect(
+      malletFilter
+    );
+
+
+    // --------------------------------------------------------
     // AMBIENT PAD
     // --------------------------------------------------------
 
     padFilter =
       new Tone.Filter(
-        1700,
+        1500,
         "lowpass"
       );
 
@@ -291,22 +462,22 @@ export function createMusicEngine() {
       envelope: {
 
         attack:
-          0.8,
+          0.75,
 
         decay:
-          0.9,
+          0.85,
 
         sustain:
-          0.28,
+          0.25,
 
         release:
-          2.6,
+          2.5,
       },
     });
 
 
     pad.volume.value =
-      -16;
+      -22;
 
 
     pad.connect(
@@ -316,7 +487,7 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // PROCESS PERSONAL MAPPING OUTPUT
+  // PROCESS MAPPING
   // ==========================================================
 
   function process(
@@ -324,7 +495,6 @@ export function createMusicEngine() {
   ) {
 
     if (
-      !initialized ||
       !Array.isArray(
         mappingOutput
       )
@@ -334,13 +504,11 @@ export function createMusicEngine() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // PASS 1
     //
-    // Continuous controls are processed first.
-    // This ensures the newest Pitch / Timbre / Intensity
-    // state exists before Note Trigger is processed.
-    // --------------------------------------------------------
+    // Continuous musical controls.
+    // ========================================================
 
     for (
       const output
@@ -360,10 +528,6 @@ export function createMusicEngine() {
       }
 
 
-      const parameter =
-        target.parameter;
-
-
       const value =
         clamp01(
           Number(
@@ -373,13 +537,14 @@ export function createMusicEngine() {
 
 
       switch (
-        parameter
+        target.parameter
       ) {
 
         case "pitch":
 
           updatePitch(
-            value
+            value,
+            true
           );
 
           break;
@@ -403,9 +568,22 @@ export function createMusicEngine() {
           break;
 
 
+        // Existing Mapping UI calls this "texture".
+        //
+        // In V2 it controls the Ambient Pad amount.
+
         case "texture":
 
-          updateTexture(
+          updatePadAmount(
+            value
+          );
+
+          break;
+
+
+        case "pad-amount":
+
+          updatePadAmount(
             value
           );
 
@@ -423,9 +601,6 @@ export function createMusicEngine() {
 
         case "rhythm":
 
-          // Stored now.
-          // A dedicated rhythmic sequencer can be added later.
-
           state.rhythm =
             value;
 
@@ -434,11 +609,11 @@ export function createMusicEngine() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // PASS 2
     //
-    // Event / note-trigger mappings
-    // --------------------------------------------------------
+    // Discrete note triggers.
+    // ========================================================
 
     for (
       const output
@@ -466,12 +641,7 @@ export function createMusicEngine() {
     }
 
 
-    // Debug API
-
-    window.crossModalAudio = {
-      ...state,
-      initialized,
-    };
+    exposeState();
   }
 
 
@@ -480,36 +650,131 @@ export function createMusicEngine() {
   // ==========================================================
 
   function updatePitch(
-    value
+    value,
+    allowPreview = true
   ) {
 
     state.pitchValue =
-      value;
+      clamp01(
+        value
+      );
 
 
     const index =
       Math.round(
-        value *
+
+        state.pitchValue *
+
         (
-          SCALE.length - 1
+          scaleNotes.length -
+          1
         )
       );
 
 
-    state.scaleIndex =
+    const nextIndex =
       Math.max(
+
         0,
+
         Math.min(
-          SCALE.length - 1,
+          scaleNotes.length - 1,
           index
         )
       );
 
 
-    state.note =
-      SCALE[
-        state.scaleIndex
+    const nextNote =
+      scaleNotes[
+        nextIndex
       ];
+
+
+    const noteChanged =
+      nextNote !==
+      state.note;
+
+
+    state.scaleIndex =
+      nextIndex;
+
+
+    state.note =
+      nextNote;
+
+
+    if (
+      noteChanged &&
+      allowPreview
+    ) {
+
+      maybePreviewNote(
+        nextNote
+      );
+    }
+  }
+
+
+  // ==========================================================
+  // GUIDED PREVIEW
+  // ==========================================================
+
+  function maybePreviewNote(
+    note
+  ) {
+
+    if (
+      !initialized ||
+      state.mode !==
+        "guided"
+    ) {
+
+      return;
+    }
+
+
+    const now =
+      performance.now();
+
+
+    if (
+      now -
+      lastPreviewTime <
+      85
+    ) {
+
+      return;
+    }
+
+
+    if (
+      note ===
+      lastPreviewNote
+    ) {
+
+      return;
+    }
+
+
+    lastPreviewTime =
+      now;
+
+
+    lastPreviewNote =
+      note;
+
+
+    previewSynth
+      ?.triggerAttackRelease(
+
+        note,
+
+        "32n",
+
+        undefined,
+
+        0.18
+      );
   }
 
 
@@ -525,43 +790,39 @@ export function createMusicEngine() {
       value;
 
 
-    // Dark -> bright
-    //
-    // 900 Hz -> ~6500 Hz
+    // Dark → Bright
 
-    const cutoff =
-      900 +
+    const malletCutoff =
+      850 +
       value *
-      5600;
+      6100;
 
 
     malletFilter
       ?.frequency
       .rampTo(
-        cutoff,
+        malletCutoff,
         0.08
       );
 
 
-    // Pad follows more gently
-
-    const padCutoff =
-      700 +
+    const ambientCutoff =
+      650 +
       value *
-      2600;
+      2800;
 
 
     padFilter
       ?.frequency
       .rampTo(
-        padCutoff,
-        0.15
+        ambientCutoff,
+        0.14
       );
   }
 
 
   // ==========================================================
-  // INTENSITY
+  // EXPRESSIVE INTENSITY
   // ==========================================================
 
   function updateIntensity(
@@ -569,32 +830,56 @@ export function createMusicEngine() {
   ) {
 
     state.intensity =
-      value;
+      clamp01(
+        value
+      );
   }
 
 
   // ==========================================================
-  // TEXTURE
+  // AMBIENT PAD AMOUNT
   // ==========================================================
 
-  function updateTexture(
+  function updatePadAmount(
     value
   ) {
 
+    state.padAmount =
+      clamp01(
+        value
+      );
+
+
     state.texture =
-      value;
+      state.padAmount;
 
 
-    // More texture -> more ambient space
+    if (
+      pad
+    ) {
+
+      const padDb =
+        -30 +
+        state.padAmount *
+        17;
+
+
+      pad.volume.rampTo(
+        padDb,
+        0.18
+      );
+    }
+
 
     if (
       reverb
     ) {
 
       reverb.wet.rampTo(
-        0.16 +
-        value *
-        0.32,
+
+        0.14 +
+        state.padAmount *
+        0.28,
 
         0.2
       );
@@ -603,7 +888,7 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // VOLUME
+  // MASTER VOLUME
   // ==========================================================
 
   function updateVolume(
@@ -614,11 +899,9 @@ export function createMusicEngine() {
       value;
 
 
-    if (
-      master
-    ) {
-
-      master.gain.rampTo(
+    master
+      ?.gain
+      .rampTo(
 
         0.12 +
         value *
@@ -626,12 +909,11 @@ export function createMusicEngine() {
 
         0.12
       );
-    }
   }
 
 
   // ==========================================================
-  // GENERIC NOTE TRIGGER
+  // NOTE TRIGGER
   // ==========================================================
 
   function processNoteTrigger(
@@ -652,17 +934,9 @@ export function createMusicEngine() {
       ) ?? 0;
 
 
-    // Rising edge
-    //
-    // Works both with:
-    // pinchStarted -> boolean
-    //
-    // and continuous mappings:
-    // openness -> note trigger
-
     const triggered =
-      value >= 0.55 &&
-      previous < 0.55;
+      value >= 0.5 &&
+      previous < 0.5;
 
 
     previousRuleValues.set(
@@ -681,40 +955,53 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // PLAY NOTE
+  // FORMAL PERFORMANCE NOTE
   // ==========================================================
 
   function triggerCurrentNote() {
 
-    const now =
-      performance.now();
-
-
-    // Safety debounce
-
     if (
-      now -
-      lastNoteTime <
-      110
+      !initialized
     ) {
 
       return;
     }
 
 
-    lastNoteTime =
+    const now =
+      performance.now();
+
+
+    if (
+      now -
+      lastFormalNoteTime <
+      105
+    ) {
+
+      return;
+    }
+
+
+    lastFormalNoteTime =
       now;
 
 
+    // --------------------------------------------------------
+    // Expressive velocity
+    //
+    // Movement energy changes how hard the virtual
+    // instrument is struck.
+    // --------------------------------------------------------
+
     const velocity =
-      0.3 +
+      0.26 +
       state.intensity *
-      0.55;
+      0.68;
 
 
-    // --------------------------------------------------------
-    // MALLET
-    // --------------------------------------------------------
+    state.lastVelocity =
+      velocity;
+
 
     mallet
       ?.triggerAttackRelease(
@@ -729,30 +1016,33 @@ export function createMusicEngine() {
       );
 
 
-    // --------------------------------------------------------
-    // AMBIENT PAD
-    // --------------------------------------------------------
-
     triggerPad();
   }
 
 
   // ==========================================================
-  // PAD
+  // AMBIENT PAD
   // ==========================================================
 
   function triggerPad() {
+
+    if (
+      state.padAmount <
+      0.06
+    ) {
+
+      return;
+    }
+
 
     const now =
       performance.now();
 
 
-    // Avoid building an enormous wash of overlapping pads.
-
     if (
       now -
       lastPadTime <
-      420
+      360
     ) {
 
       return;
@@ -763,21 +1053,21 @@ export function createMusicEngine() {
       now;
 
 
-    const chordIndex =
-      state.scaleIndex %
-      PAD_CHORDS.length;
-
-
     const chord =
-      PAD_CHORDS[
-        chordIndex
-      ];
+      buildPadChord();
 
 
     const velocity =
-      0.08 +
-      state.intensity *
-      0.16;
+      Math.min(
+
+        0.36,
+
+        0.05 +
+        state.padAmount *
+        0.2 +
+        state.intensity *
+        0.08
+      );
 
 
     pad
@@ -795,6 +1085,149 @@ export function createMusicEngine() {
 
 
   // ==========================================================
+  // PAD CHORD FROM CURRENT SCALE
+  // ==========================================================
+
+  function buildPadChord() {
+
+    const current =
+      state.scaleIndex;
+
+
+    const noteIndexes = [
+
+      current,
+
+      Math.min(
+        scaleNotes.length - 1,
+        current + 2
+      ),
+
+      Math.min(
+        scaleNotes.length - 1,
+        current + 4
+      ),
+    ];
+
+
+    const unique =
+      [
+        ...new Set(
+          noteIndexes
+        ),
+      ];
+
+
+    return unique.map(
+      (index) => {
+
+        let midi =
+          noteToMidi(
+            scaleNotes[
+              index
+            ]
+          );
+
+
+        // Keep the pad below the lead whenever possible.
+
+        if (
+          midi >= 60
+        ) {
+
+          midi -=
+            12;
+        }
+
+
+        return midiToNote(
+          midi
+        );
+      }
+    );
+  }
+
+
+  // ==========================================================
+  // SCALE
+  // ==========================================================
+
+  function setScale(
+    scaleName
+  ) {
+
+    if (
+      !SCALE_INTERVALS[
+        scaleName
+      ]
+    ) {
+
+      return false;
+    }
+
+
+    state.scale =
+      scaleName;
+
+
+    scaleNotes =
+      buildScaleNotes(
+        scaleName
+      );
+
+
+    updatePitch(
+      state.pitchValue,
+      false
+    );
+
+
+    saveSettings();
+
+
+    exposeState();
+
+
+    return true;
+  }
+
+
+  // ==========================================================
+  // GUIDED / PERFORM MODE
+  // ==========================================================
+
+  function setMode(
+    mode
+  ) {
+
+    if (
+      mode !== "guided" &&
+      mode !== "perform"
+    ) {
+
+      return false;
+    }
+
+
+    state.mode =
+      mode;
+
+
+    lastPreviewNote =
+      null;
+
+
+    saveSettings();
+
+
+    exposeState();
+
+
+    return true;
+  }
+
+
+  // ==========================================================
   // STOP
   // ==========================================================
 
@@ -805,7 +1238,12 @@ export function createMusicEngine() {
       pad
         ?.releaseAll();
 
+
       mallet
+        ?.triggerRelease();
+
+
+      previewSynth
         ?.triggerRelease();
 
     }
@@ -813,7 +1251,7 @@ export function createMusicEngine() {
     catch (error) {
 
       console.warn(
-        "[Music Engine] Unable to stop voices",
+        "[Music Engine V2] stopAll failed",
         error
       );
     }
@@ -827,15 +1265,65 @@ export function createMusicEngine() {
   function getState() {
 
     return {
+
       ...state,
 
       initialized,
+
+      scaleNotes:
+        [
+          ...scaleNotes,
+        ],
+
+      noteCount:
+        scaleNotes.length,
     };
   }
 
 
+  function exposeState() {
+
+    window.crossModalAudio =
+      getState();
+  }
+
+
   // ==========================================================
-  // API
+  // SETTINGS
+  // ==========================================================
+
+  function saveSettings() {
+
+    try {
+
+      localStorage.setItem(
+
+        SETTINGS_KEY,
+
+        JSON.stringify({
+
+          scale:
+            state.scale,
+
+          mode:
+            state.mode,
+        })
+      );
+
+    }
+
+    catch (error) {
+
+      console.warn(
+        "Unable to save music settings",
+        error
+      );
+    }
+  }
+
+
+  // ==========================================================
+  // PUBLIC API
   // ==========================================================
 
   return {
@@ -847,12 +1335,241 @@ export function createMusicEngine() {
     stopAll,
 
     getState,
+
+    setScale,
+
+    setMode,
   };
 }
 
 
 // ============================================================
-// HELPERS
+// BUILD SCALE
+// ============================================================
+
+function buildScaleNotes(
+  scaleName
+) {
+
+  const intervals =
+    SCALE_INTERVALS[
+      scaleName
+    ] ??
+    SCALE_INTERVALS.major;
+
+
+  const notes =
+    [];
+
+
+  for (
+    let midi = MIDI_MIN;
+    midi <= MIDI_MAX;
+    midi++
+  ) {
+
+    const relative =
+      (
+        midi -
+        MIDI_MIN
+      ) %
+      12;
+
+
+    if (
+      intervals.includes(
+        relative
+      )
+    ) {
+
+      notes.push(
+        midiToNote(
+          midi
+        )
+      );
+    }
+  }
+
+
+  return notes;
+}
+
+
+// ============================================================
+// MIDI HELPERS
+// ============================================================
+
+function midiToNote(
+  midi
+) {
+
+  const normalized =
+    Math.round(
+      midi
+    );
+
+
+  const noteName =
+    NOTE_NAMES[
+      (
+        normalized %
+        12 +
+        12
+      ) %
+      12
+    ];
+
+
+  const octave =
+    Math.floor(
+      normalized /
+      12
+    ) -
+    1;
+
+
+  return (
+    noteName +
+    octave
+  );
+}
+
+
+function noteToMidi(
+  note
+) {
+
+  const match =
+    /^([A-G])(#?)(-?\d+)$/
+      .exec(
+        note
+      );
+
+
+  if (
+    !match
+  ) {
+
+    return 60;
+  }
+
+
+  const [
+    ,
+    letter,
+    sharp,
+    octaveText,
+  ] =
+    match;
+
+
+  const pitchClasses = {
+
+    C: 0,
+    D: 2,
+    E: 4,
+    F: 5,
+    G: 7,
+    A: 9,
+    B: 11,
+  };
+
+
+  let pitchClass =
+    pitchClasses[
+      letter
+    ];
+
+
+  if (
+    sharp
+  ) {
+
+    pitchClass +=
+      1;
+  }
+
+
+  const octave =
+    Number(
+      octaveText
+    );
+
+
+  return (
+    octave +
+    1
+  ) *
+    12 +
+    pitchClass;
+}
+
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+function loadSettings() {
+
+  const defaults = {
+
+    scale:
+      "major",
+
+    mode:
+      "guided",
+  };
+
+
+  try {
+
+    const raw =
+      localStorage.getItem(
+        SETTINGS_KEY
+      );
+
+
+    if (
+      !raw
+    ) {
+
+      return defaults;
+    }
+
+
+    const parsed =
+      JSON.parse(
+        raw
+      );
+
+
+    return {
+
+      scale:
+        SCALE_INTERVALS[
+          parsed.scale
+        ]
+          ? parsed.scale
+          : defaults.scale,
+
+      mode:
+        parsed.mode ===
+          "perform"
+          ? "perform"
+          : "guided",
+    };
+
+  }
+
+  catch {
+
+    return defaults;
+  }
+}
+
+
+// ============================================================
+// UTIL
 // ============================================================
 
 function clamp01(

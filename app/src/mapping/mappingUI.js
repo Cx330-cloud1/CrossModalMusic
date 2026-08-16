@@ -1,58 +1,199 @@
 // ============================================================
-// PERSONAL MAPPING STUDIO UI
+// PERSONAL MAPPING STUDIO UI V2
+// ============================================================
+
+
+// ============================================================
+// SOURCE OPTIONS
 // ============================================================
 
 const HAND_OPTIONS = [
-  ["Left", "Left Hand"],
-  ["Right", "Right Hand"],
+
+  [
+    "Left",
+    "Left Hand",
+  ],
+
+  [
+    "Right",
+    "Right Hand",
+  ],
 ];
+
 
 const FEATURE_OPTIONS = [
-  ["x", "X Position"],
-  ["y", "Y Position"],
-  ["pinch", "Pinch Amount"],
-  ["pinchStarted", "Pinch Trigger"],
-  ["openness", "Hand Openness"],
-  ["speed", "Movement Energy"],
+
+  [
+    "x",
+    "X Position",
+  ],
+
+  [
+    "y",
+    "Y Position",
+  ],
+
+  [
+    "pinch",
+    "Pinch Amount",
+  ],
+
+  [
+    "pinchStarted",
+    "Pinch Trigger",
+  ],
+
+  [
+    "openness",
+    "Hand Openness",
+  ],
+
+  [
+    "speed",
+    "Movement Energy",
+  ],
 ];
+
+
+// ============================================================
+// MUSIC OPTIONS
+// ============================================================
 
 const MUSIC_OPTIONS = [
-  ["pitch", "Pitch"],
-  ["note-trigger", "Note Trigger"],
-  ["rhythm", "Rhythm"],
-  ["timbre", "Timbre"],
-  ["intensity", "Intensity"],
-  ["texture", "Texture"],
-  ["volume", "Volume"],
+
+  [
+    "pitch",
+    "Pitch",
+  ],
+
+  [
+    "note-trigger",
+    "Note Trigger",
+  ],
+
+  [
+    "rhythm",
+    "Rhythm",
+  ],
+
+  [
+    "timbre",
+    "Timbre",
+  ],
+
+  [
+    "intensity",
+    "Intensity / Velocity",
+  ],
+
+  // Internal value stays "texture"
+  // so older saved mapping profiles remain compatible.
+
+  [
+    "texture",
+    "Ambient Pad",
+  ],
+
+  [
+    "volume",
+    "Volume",
+  ],
 ];
+
+
+// ============================================================
+// VISUAL OPTIONS
+// ============================================================
 
 const VISUAL_OPTIONS = [
-  ["rising-line", "Rising Line"],
-  ["pulse", "Pulse"],
-  ["particle-energy", "Particles"],
-  ["color-shift", "Color Shift"],
-  ["wave", "Wave"],
-  ["expansion", "Expansion"],
+
+  [
+    "rising-line",
+    "Rising Line",
+  ],
+
+  [
+    "pulse",
+    "Pulse",
+  ],
+
+  [
+    "particle-energy",
+    "Particles",
+  ],
+
+  [
+    "color-shift",
+    "Color Shift",
+  ],
+
+  [
+    "wave",
+    "Wave",
+  ],
+
+  [
+    "expansion",
+    "Expansion",
+  ],
 ];
+
+
+// ============================================================
+// HAPTIC OPTIONS
+// ============================================================
 
 const HAPTIC_OPTIONS = [
-  ["left-pair", "Left Pair"],
-  ["right-pair", "Right Pair"],
-  ["alternating", "Alternating"],
-  ["center-to-right", "Center → Right"],
-  ["intensity", "Intensity"],
-  ["all", "All Points"],
+
+  [
+    "left-pair",
+    "Left Pair",
+  ],
+
+  [
+    "right-pair",
+    "Right Pair",
+  ],
+
+  [
+    "alternating",
+    "Alternating",
+  ],
+
+  [
+    "center-to-right",
+    "Spatial Flow",
+  ],
+
+  [
+    "intensity",
+    "Intensity",
+  ],
+
+  [
+    "all",
+    "All Points",
+  ],
 ];
 
+
+// ============================================================
+// FACTORY
+// ============================================================
 
 export function createMappingStudioUI({
   container,
   engine,
 }) {
 
-  if (!container) {
+  if (
+    !container
+  ) {
+
     return {
+
       render() {},
+
       updateLiveValues() {},
     };
   }
@@ -74,6 +215,7 @@ export function createMappingStudioUI({
         <div class="mapping-studio-header">
 
           <div>
+
             <p class="eyebrow">
               02 / PERSONAL MAPPING
             </p>
@@ -86,32 +228,41 @@ export function createMappingStudioUI({
               Define what each movement means across
               sound, vision and body feedback.
             </p>
+
           </div>
 
 
           <div class="mapping-profile-controls">
 
             <label>
+
               PROFILE
 
               <input
                 id="mappingProfileName"
-                value="${escapeHTML(profile.name)}"
+                value="${escapeHTML(
+                  profile.name
+                )}"
               />
+
             </label>
+
 
             <div class="mapping-actions">
 
               <button
                 id="addMappingButton"
                 class="mapping-button primary"
+                type="button"
               >
                 + ADD MAPPING
               </button>
 
+
               <button
                 id="resetMappingButton"
                 class="mapping-button secondary"
+                type="button"
               >
                 RESET
               </button>
@@ -125,17 +276,27 @@ export function createMappingStudioUI({
 
         <div class="mapping-column-labels">
 
-          <span>BODY INPUT</span>
+          <span>
+            BODY INPUT
+          </span>
 
           <span></span>
 
-          <span>MUSIC</span>
+          <span>
+            MUSIC
+          </span>
 
-          <span>VISUAL</span>
+          <span>
+            VISUAL
+          </span>
 
-          <span>BODY / HAPTIC</span>
+          <span>
+            BODY / HAPTIC
+          </span>
 
-          <span>LIVE</span>
+          <span>
+            LIVE
+          </span>
 
         </div>
 
@@ -146,7 +307,9 @@ export function createMappingStudioUI({
         >
 
           ${profile.rules
-            .map(renderRule)
+            .map(
+              renderRule
+            )
             .join("")}
 
         </div>
@@ -179,10 +342,12 @@ export function createMappingStudioUI({
             data-role="hand"
             aria-label="Input hand"
           >
+
             ${buildOptions(
               HAND_OPTIONS,
               rule.source.hand
             )}
+
           </select>
 
 
@@ -190,10 +355,12 @@ export function createMappingStudioUI({
             data-role="feature"
             aria-label="Input feature"
           >
+
             ${buildOptions(
               FEATURE_OPTIONS,
               rule.source.feature
             )}
+
           </select>
 
         </div>
@@ -231,16 +398,19 @@ export function createMappingStudioUI({
             VALUE
           </span>
 
+
           <strong
             data-live-value="${rule.id}"
           >
             —
           </strong>
 
+
           <button
             class="remove-mapping"
             data-remove-rule="${rule.id}"
             title="Remove mapping"
+            type="button"
           >
             ×
           </button>
@@ -251,6 +421,10 @@ export function createMappingStudioUI({
     `;
   }
 
+
+  // ==========================================================
+  // TARGET
+  // ==========================================================
 
   function renderTarget(
     rule,
@@ -275,9 +449,11 @@ export function createMappingStudioUI({
           <input
             type="checkbox"
             data-role="${domain}-enabled"
-            ${target.enabled
-              ? "checked"
-              : ""}
+            ${
+              target.enabled
+                ? "checked"
+                : ""
+            }
           />
 
           <span>
@@ -289,9 +465,11 @@ export function createMappingStudioUI({
 
         <select
           data-role="${domain}"
-          ${target.enabled
-            ? ""
-            : "disabled"}
+          ${
+            target.enabled
+              ? ""
+              : "disabled"
+          }
         >
 
           ${buildOptions(
@@ -318,21 +496,29 @@ export function createMappingStudioUI({
       );
 
 
-    profileName?.addEventListener(
-      "change",
-      (event) => {
+    profileName
+      ?.addEventListener(
+        "change",
+        (event) => {
 
-        const name =
-          event.target.value.trim();
+          const name =
+            event.target
+              .value
+              .trim();
 
 
-        engine.setProfileName(
-          name ||
-          "Untitled Music Language"
-        );
-      }
-    );
+          engine.setProfileName(
 
+            name ||
+            "Untitled Music Language"
+          );
+        }
+      );
+
+
+    // --------------------------------------------------------
+    // ADD RULE
+    // --------------------------------------------------------
 
     container
       .querySelector(
@@ -344,10 +530,15 @@ export function createMappingStudioUI({
 
           engine.addRule();
 
+
           render();
         }
       );
 
+
+    // --------------------------------------------------------
+    // RESET PROFILE
+    // --------------------------------------------------------
 
     container
       .querySelector(
@@ -359,26 +550,33 @@ export function createMappingStudioUI({
 
           engine.resetProfile();
 
+
           render();
         }
       );
 
 
-    const rules =
-      container.querySelectorAll(
+    // --------------------------------------------------------
+    // RULE EVENTS
+    // --------------------------------------------------------
+
+    container
+      .querySelectorAll(
         ".mapping-rule"
+      )
+      .forEach(
+        (ruleElement) => {
+
+          bindRule(
+            ruleElement
+          );
+        }
       );
 
 
-    rules.forEach(
-      (ruleElement) => {
-
-        bindRule(
-          ruleElement
-        );
-      }
-    );
-
+    // --------------------------------------------------------
+    // REMOVE
+    // --------------------------------------------------------
 
     container
       .querySelectorAll(
@@ -392,8 +590,10 @@ export function createMappingStudioUI({
             () => {
 
               engine.removeRule(
-                button.dataset.removeRule
+                button.dataset
+                  .removeRule
               );
+
 
               render();
             }
@@ -403,12 +603,17 @@ export function createMappingStudioUI({
   }
 
 
+  // ==========================================================
+  // BIND ONE RULE
+  // ==========================================================
+
   function bindRule(
     element
   ) {
 
     const ruleId =
-      element.dataset.ruleId;
+      element.dataset
+        .ruleId;
 
 
     const handSelect =
@@ -423,11 +628,18 @@ export function createMappingStudioUI({
       );
 
 
+    // --------------------------------------------------------
+    // SOURCE
+    // --------------------------------------------------------
+
     function updateSource() {
 
       engine.updateSource(
+
         ruleId,
+
         {
+
           hand:
             handSelect.value,
 
@@ -438,17 +650,23 @@ export function createMappingStudioUI({
     }
 
 
-    handSelect.addEventListener(
-      "change",
-      updateSource
-    );
+    handSelect
+      .addEventListener(
+        "change",
+        updateSource
+      );
 
 
-    featureSelect.addEventListener(
-      "change",
-      updateSource
-    );
+    featureSelect
+      .addEventListener(
+        "change",
+        updateSource
+      );
 
+
+    // --------------------------------------------------------
+    // TARGETS
+    // --------------------------------------------------------
 
     for (
       const domain
@@ -471,13 +689,25 @@ export function createMappingStudioUI({
         );
 
 
+      if (
+        !select ||
+        !checkbox
+      ) {
+
+        continue;
+      }
+
+
       select.addEventListener(
         "change",
         () => {
 
           engine.updateTarget(
+
             ruleId,
+
             domain,
+
             select.value
           );
         }
@@ -489,8 +719,11 @@ export function createMappingStudioUI({
         () => {
 
           engine.setTargetEnabled(
+
             ruleId,
+
             domain,
+
             checkbox.checked
           );
 
@@ -504,12 +737,23 @@ export function createMappingStudioUI({
 
 
   // ==========================================================
-  // LIVE VALUES
+  // LIVE DATA
   // ==========================================================
 
   function updateLiveValues(
     mappingOutput
   ) {
+
+    if (
+      !Array.isArray(
+        mappingOutput
+      )
+    ) {
+
+      mappingOutput =
+        [];
+    }
+
 
     const activeRuleIds =
       new Set();
@@ -531,7 +775,10 @@ export function createMappingStudioUI({
         );
 
 
-      if (!valueElement) {
+      if (
+        !valueElement
+      ) {
+
         continue;
       }
 
@@ -539,7 +786,9 @@ export function createMappingStudioUI({
       valueElement.textContent =
         Number(
           output.value
-        ).toFixed(2);
+        ).toFixed(
+          2
+        );
 
 
       valueElement
@@ -553,6 +802,10 @@ export function createMappingStudioUI({
     }
 
 
+    // --------------------------------------------------------
+    // Inactive mappings
+    // --------------------------------------------------------
+
     container
       .querySelectorAll(
         ".mapping-rule"
@@ -560,46 +813,64 @@ export function createMappingStudioUI({
       .forEach(
         (ruleElement) => {
 
+          const ruleId =
+            ruleElement.dataset
+              .ruleId;
+
+
           if (
-            !activeRuleIds.has(
-              ruleElement.dataset.ruleId
+            activeRuleIds.has(
+              ruleId
             )
           ) {
 
-            const valueElement =
-              ruleElement.querySelector(
-                "[data-live-value]"
-              );
+            return;
+          }
 
 
-            if (valueElement) {
+          const valueElement =
+            ruleElement.querySelector(
+              "[data-live-value]"
+            );
 
-              valueElement.textContent =
-                "—";
-            }
+
+          if (
+            valueElement
+          ) {
+
+            valueElement.textContent =
+              "—";
+          }
 
 
-            ruleElement.classList.remove(
+          ruleElement
+            .classList
+            .remove(
               "mapping-active"
             );
-          }
         }
       );
   }
 
 
+  // ==========================================================
+  // INITIAL RENDER
+  // ==========================================================
+
   render();
 
 
   return {
+
     render,
+
     updateLiveValues,
   };
 }
 
 
 // ============================================================
-// HELPERS
+// OPTION BUILDER
 // ============================================================
 
 function buildOptions(
@@ -615,8 +886,12 @@ function buildOptions(
       ]) => {
 
         const selected =
-          value === selectedValue
+
+          value ===
+          selectedValue
+
             ? "selected"
+
             : "";
 
 
@@ -634,6 +909,10 @@ function buildOptions(
 }
 
 
+// ============================================================
+// HTML ESCAPE
+// ============================================================
+
 function escapeHTML(
   value
 ) {
@@ -641,22 +920,27 @@ function escapeHTML(
   return String(
     value
   )
+
     .replaceAll(
       "&",
       "&amp;"
     )
+
     .replaceAll(
       "<",
       "&lt;"
     )
+
     .replaceAll(
       ">",
       "&gt;"
     )
+
     .replaceAll(
       '"',
       "&quot;"
     )
+
     .replaceAll(
       "'",
       "&#039;"

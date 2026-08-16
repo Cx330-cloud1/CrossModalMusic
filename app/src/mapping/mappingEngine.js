@@ -1,12 +1,15 @@
 // ============================================================
-// PERSONAL MAPPING ENGINE
+// PERSONAL MAPPING ENGINE V2
 //
 // Gesture / body feature
 //        ↓
-// Music + Visual + Haptic meaning
+// User-defined semantic mapping
+//        ↓
+// Music + Visual + Haptic
 //
-// The mappings belong to the user rather than being
-// permanently defined by the system.
+// Core principle:
+// The system does not permanently decide what a gesture means.
+// The mapping belongs to the creator.
 // ============================================================
 
 
@@ -14,132 +17,294 @@ const STORAGE_KEY =
   "cross-modal-mapping-profile-v1";
 
 
+const CURRENT_PROFILE_VERSION =
+  2;
+
+
 // ============================================================
-// DEFAULT PROFILE
-//
-// These are only starting suggestions.
-// Users will be able to modify them in the Mapping Studio.
+// DEFAULT PROFILE V2
 // ============================================================
 
 const DEFAULT_PROFILE = {
 
-  name: "Default Music Language",
+  name:
+    "Default Music Language",
 
-  version: 1,
+  version:
+    CURRENT_PROFILE_VERSION,
 
   rules: [
 
+    // ========================================================
+    // LEFT Y
+    //
+    // Vertical position:
+    // pitch + visual height + spatial haptic flow
+    // ========================================================
+
     {
-      id: "left-y",
+      id:
+        "left-y",
 
       source: {
-        hand: "Left",
-        feature: "y",
+
+        hand:
+          "Left",
+
+        feature:
+          "y",
       },
 
       targets: {
 
         music: {
-          enabled: true,
-          parameter: "pitch",
+
+          enabled:
+            true,
+
+          parameter:
+            "pitch",
         },
+
 
         visual: {
-          enabled: true,
-          parameter: "rising-line",
+
+          enabled:
+            true,
+
+          parameter:
+            "rising-line",
         },
 
+
         haptic: {
-          enabled: true,
-          parameter: "center-to-right",
+
+          enabled:
+            true,
+
+          parameter:
+            "center-to-right",
         },
       },
     },
 
 
+    // ========================================================
+    // LEFT X
+    //
+    // Horizontal position:
+    // timbre + visual color
+    // ========================================================
+
     {
-      id: "left-x",
+      id:
+        "left-x",
 
       source: {
-        hand: "Left",
-        feature: "x",
+
+        hand:
+          "Left",
+
+        feature:
+          "x",
       },
 
       targets: {
 
         music: {
-          enabled: true,
-          parameter: "timbre",
+
+          enabled:
+            true,
+
+          parameter:
+            "timbre",
         },
+
 
         visual: {
-          enabled: true,
-          parameter: "color-shift",
+
+          enabled:
+            true,
+
+          parameter:
+            "color-shift",
         },
 
+
         haptic: {
-          enabled: false,
-          parameter: "left-pair",
+
+          enabled:
+            false,
+
+          parameter:
+            "left-pair",
         },
       },
     },
 
 
+    // ========================================================
+    // RIGHT PINCH
+    //
+    // Intentional event trigger:
+    // formal note + visual pulse + alternating body feedback
+    // ========================================================
+
     {
-      id: "right-pinch",
+      id:
+        "right-pinch",
 
       source: {
-        hand: "Right",
-        feature: "pinchStarted",
+
+        hand:
+          "Right",
+
+        feature:
+          "pinchStarted",
       },
 
       targets: {
 
         music: {
-          enabled: true,
-          parameter: "note-trigger",
+
+          enabled:
+            true,
+
+          parameter:
+            "note-trigger",
         },
+
 
         visual: {
-          enabled: true,
-          parameter: "pulse",
+
+          enabled:
+            true,
+
+          parameter:
+            "pulse",
         },
 
+
         haptic: {
-          enabled: true,
-          parameter: "alternating",
+
+          enabled:
+            true,
+
+          parameter:
+            "alternating",
         },
       },
     },
 
 
+    // ========================================================
+    // RIGHT MOVEMENT ENERGY
+    //
+    // Expressive intensity / velocity
+    // ========================================================
+
     {
-      id: "right-speed",
+      id:
+        "right-speed",
 
       source: {
-        hand: "Right",
-        feature: "speed",
+
+        hand:
+          "Right",
+
+        feature:
+          "speed",
       },
 
       targets: {
 
         music: {
-          enabled: true,
-          parameter: "intensity",
+
+          enabled:
+            true,
+
+          parameter:
+            "intensity",
         },
+
 
         visual: {
-          enabled: true,
-          parameter: "particle-energy",
+
+          enabled:
+            true,
+
+          parameter:
+            "particle-energy",
         },
 
+
         haptic: {
-          enabled: true,
-          parameter: "intensity",
+
+          enabled:
+            true,
+
+          parameter:
+            "intensity",
         },
       },
     },
 
+
+    // ========================================================
+    // RIGHT OPENNESS
+    //
+    // New in V2:
+    // Opening the hand gradually introduces Ambient Pad.
+    //
+    // Internal parameter remains "texture" for compatibility
+    // with existing saved mappings.
+    // ========================================================
+
+    {
+      id:
+        "right-openness",
+
+      source: {
+
+        hand:
+          "Right",
+
+        feature:
+          "openness",
+      },
+
+      targets: {
+
+        music: {
+
+          enabled:
+            true,
+
+          parameter:
+            "texture",
+        },
+
+
+        visual: {
+
+          enabled:
+            false,
+
+          parameter:
+            "expansion",
+        },
+
+
+        haptic: {
+
+          enabled:
+            false,
+
+          parameter:
+            "all",
+        },
+      },
+    },
   ],
 };
 
@@ -154,15 +319,32 @@ export function createMappingEngine() {
     loadProfile();
 
 
-  // ----------------------------------------------------------
-  // Resolve current hand data into semantic output
-  // ----------------------------------------------------------
+  // ==========================================================
+  // RESOLVE
+  //
+  // Current hand data
+  //       ↓
+  // active user mapping rules
+  //       ↓
+  // semantic outputs
+  // ==========================================================
 
   function resolve(
     handData
   ) {
 
-    const outputs = [];
+    if (
+      !Array.isArray(
+        handData
+      )
+    ) {
+
+      return [];
+    }
+
+
+    const outputs =
+      [];
 
 
     for (
@@ -178,7 +360,10 @@ export function createMappingEngine() {
         );
 
 
-      if (!hand) {
+      if (
+        !hand
+      ) {
+
         continue;
       }
 
@@ -190,7 +375,8 @@ export function createMappingEngine() {
 
 
       if (
-        rawValue === undefined
+        rawValue ===
+        undefined
       ) {
 
         continue;
@@ -208,13 +394,18 @@ export function createMappingEngine() {
         ruleId:
           rule.id,
 
+
         source: {
+
           ...rule.source,
         },
 
+
         value,
 
+
         rawValue,
+
 
         targets:
           clone(
@@ -228,9 +419,9 @@ export function createMappingEngine() {
   }
 
 
-  // ----------------------------------------------------------
-  // Change source
-  // ----------------------------------------------------------
+  // ==========================================================
+  // UPDATE SOURCE
+  // ==========================================================
 
   function updateSource(
     ruleId,
@@ -246,19 +437,26 @@ export function createMappingEngine() {
       );
 
 
-    if (!rule) {
+    if (
+      !rule
+    ) {
+
       return false;
     }
 
 
-    if (hand) {
+    if (
+      hand
+    ) {
 
       rule.source.hand =
         hand;
     }
 
 
-    if (feature) {
+    if (
+      feature
+    ) {
 
       rule.source.feature =
         feature;
@@ -267,13 +465,14 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return true;
   }
 
 
-  // ----------------------------------------------------------
-  // Change target
-  // ----------------------------------------------------------
+  // ==========================================================
+  // UPDATE TARGET PARAMETER
+  // ==========================================================
 
   function updateTarget(
     ruleId,
@@ -306,13 +505,14 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return true;
   }
 
 
-  // ----------------------------------------------------------
-  // Enable / disable target
-  // ----------------------------------------------------------
+  // ==========================================================
+  // ENABLE / DISABLE TARGET
+  // ==========================================================
 
   function setTargetEnabled(
     ruleId,
@@ -347,13 +547,14 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return true;
   }
 
 
-  // ----------------------------------------------------------
-  // Add custom mapping rule
-  // ----------------------------------------------------------
+  // ==========================================================
+  // ADD MAPPING RULE
+  // ==========================================================
 
   function addRule(
     config = {}
@@ -368,61 +569,68 @@ export function createMappingEngine() {
 
       id,
 
+
       source: {
 
         hand:
-          config.source?.hand ??
+          config.source
+            ?.hand ??
           "Left",
 
         feature:
-          config.source?.feature ??
+          config.source
+            ?.feature ??
           "y",
       },
+
 
       targets: {
 
         music: {
+
           enabled:
             config.targets
               ?.music
-              ?.enabled
-            ?? true,
+              ?.enabled ??
+            true,
 
           parameter:
             config.targets
               ?.music
-              ?.parameter
-            ?? "pitch",
+              ?.parameter ??
+            "pitch",
         },
 
 
         visual: {
+
           enabled:
             config.targets
               ?.visual
-              ?.enabled
-            ?? true,
+              ?.enabled ??
+            true,
 
           parameter:
             config.targets
               ?.visual
-              ?.parameter
-            ?? "line",
+              ?.parameter ??
+            "rising-line",
         },
 
 
         haptic: {
+
           enabled:
             config.targets
               ?.haptic
-              ?.enabled
-            ?? true,
+              ?.enabled ??
+            false,
 
           parameter:
             config.targets
               ?.haptic
-              ?.parameter
-            ?? "left",
+              ?.parameter ??
+            "all",
         },
       },
     };
@@ -435,15 +643,16 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return clone(
       rule
     );
   }
 
 
-  // ----------------------------------------------------------
-  // Remove rule
-  // ----------------------------------------------------------
+  // ==========================================================
+  // REMOVE RULE
+  // ==========================================================
 
   function removeRule(
     ruleId
@@ -458,7 +667,11 @@ export function createMappingEngine() {
         );
 
 
-    if (index === -1) {
+    if (
+      index ===
+      -1
+    ) {
+
       return false;
     }
 
@@ -471,13 +684,14 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return true;
   }
 
 
-  // ----------------------------------------------------------
-  // Profile
-  // ----------------------------------------------------------
+  // ==========================================================
+  // PROFILE
+  // ==========================================================
 
   function getProfile() {
 
@@ -492,7 +706,9 @@ export function createMappingEngine() {
   ) {
 
     profile.name =
-      name;
+      name ||
+      "Untitled Music Language";
+
 
     saveProfile();
   }
@@ -508,13 +724,14 @@ export function createMappingEngine() {
 
     saveProfile();
 
+
     return getProfile();
   }
 
 
-  // ----------------------------------------------------------
-  // Internal
-  // ----------------------------------------------------------
+  // ==========================================================
+  // FIND RULE
+  // ==========================================================
 
   function findRule(
     ruleId
@@ -525,26 +742,44 @@ export function createMappingEngine() {
         (rule) =>
           rule.id ===
           ruleId
-      )
-      ?? null
+      ) ??
+      null
     );
   }
 
+
+  // ==========================================================
+  // SAVE
+  // ==========================================================
 
   function saveProfile() {
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        profile
-      )
-    );
+    try {
+
+      localStorage.setItem(
+
+        STORAGE_KEY,
+
+        JSON.stringify(
+          profile
+        )
+      );
+
+    }
+
+    catch (error) {
+
+      console.warn(
+        "Unable to save mapping profile.",
+        error
+      );
+    }
   }
 
 
-  // ----------------------------------------------------------
-  // Public API
-  // ----------------------------------------------------------
+  // ==========================================================
+  // PUBLIC API
+  // ==========================================================
 
   return {
 
@@ -570,7 +805,7 @@ export function createMappingEngine() {
 
 
 // ============================================================
-// STORAGE
+// LOAD + MIGRATE PROFILE
 // ============================================================
 
 function loadProfile() {
@@ -583,7 +818,9 @@ function loadProfile() {
       );
 
 
-    if (!stored) {
+    if (
+      !stored
+    ) {
 
       return clone(
         DEFAULT_PROFILE
@@ -610,6 +847,97 @@ function loadProfile() {
     }
 
 
+    // ========================================================
+    // MIGRATION: V1 → V2
+    //
+    // Preserve the user's existing mapping choices.
+    // Only add the new Ambient Pad rule if it does not exist.
+    // ========================================================
+
+    if (
+      !parsed.version ||
+      parsed.version <
+        CURRENT_PROFILE_VERSION
+    ) {
+
+      const hasRightOpenness =
+        parsed.rules.some(
+          (rule) =>
+            rule.id ===
+            "right-openness"
+        );
+
+
+      if (
+        !hasRightOpenness
+      ) {
+
+        parsed.rules.push({
+
+          id:
+            "right-openness",
+
+
+          source: {
+
+            hand:
+              "Right",
+
+            feature:
+              "openness",
+          },
+
+
+          targets: {
+
+            music: {
+
+              enabled:
+                true,
+
+              parameter:
+                "texture",
+            },
+
+
+            visual: {
+
+              enabled:
+                false,
+
+              parameter:
+                "expansion",
+            },
+
+
+            haptic: {
+
+              enabled:
+                false,
+
+              parameter:
+                "all",
+            },
+          },
+        });
+      }
+
+
+      parsed.version =
+        CURRENT_PROFILE_VERSION;
+
+
+      localStorage.setItem(
+
+        STORAGE_KEY,
+
+        JSON.stringify(
+          parsed
+        )
+      );
+    }
+
+
     return parsed;
 
   }
@@ -630,7 +958,7 @@ function loadProfile() {
 
 
 // ============================================================
-// VALUE NORMALIZATION
+// NORMALIZE SOURCE VALUE
 // ============================================================
 
 function normalizeSourceValue(
@@ -654,7 +982,9 @@ function normalizeSourceValue(
   ) {
 
     return Math.max(
+
       0,
+
       Math.min(
         1,
         rawValue
