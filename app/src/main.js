@@ -9,6 +9,10 @@ import {
   createHandSignalProcessor,
 } from "./cv/signalProcessing.js";
 
+import {
+  createMappingEngine,
+} from "./mapping/mappingEngine.js";
+
 
 // ============================================================
 // CORE DOM
@@ -139,15 +143,22 @@ let handTracker = null;
 let previousVideoTime = -1;
 
 
-// Raw CV feature states
+// ------------------------------------------------------------
+// Raw feature history
+// ------------------------------------------------------------
+
 const previousFeatureStates = {
   Left: null,
   Right: null,
 };
 
 
-// Stable signal processors
+// ------------------------------------------------------------
+// Signal processors
+// ------------------------------------------------------------
+
 const signalProcessors = {
+
   Left:
     createHandSignalProcessor(),
 
@@ -156,8 +167,16 @@ const signalProcessors = {
 };
 
 
+// ------------------------------------------------------------
+// Personal Mapping Engine
+// ------------------------------------------------------------
+
+const mappingEngine =
+  createMappingEngine();
+
+
 // ============================================================
-// START
+// START SESSION
 // ============================================================
 
 startButton.addEventListener(
@@ -168,7 +187,8 @@ startButton.addEventListener(
 
 async function startSession() {
 
-  startButton.disabled = true;
+  startButton.disabled =
+    true;
 
   startButton.textContent =
     "INITIALIZING...";
@@ -180,7 +200,7 @@ async function startSession() {
   try {
 
     // --------------------------------------------------------
-    // MediaPipe
+    // Initialize MediaPipe
     // --------------------------------------------------------
 
     handTracker =
@@ -188,13 +208,15 @@ async function startSession() {
 
 
     // --------------------------------------------------------
-    // Webcam
+    // Request webcam
     // --------------------------------------------------------
 
     const stream =
       await navigator.mediaDevices
         .getUserMedia({
+
           video: {
+
             width: {
               ideal: 1280,
             },
@@ -211,6 +233,7 @@ async function startSession() {
     video.srcObject =
       stream;
 
+
     await video.play();
 
 
@@ -220,16 +243,23 @@ async function startSession() {
     cameraMessage.style.display =
       "none";
 
+
     statusElement.textContent =
       "LIVE";
+
 
     statusElement.classList.add(
       "live"
     );
 
+
     startButton.textContent =
       "SESSION ACTIVE";
 
+
+    // --------------------------------------------------------
+    // Start CV loop
+    // --------------------------------------------------------
 
     requestAnimationFrame(
       detectionLoop
@@ -248,6 +278,7 @@ async function startSession() {
     statusElement.textContent =
       "ERROR";
 
+
     statusElement.classList.remove(
       "live"
     );
@@ -256,12 +287,14 @@ async function startSession() {
     cameraMessage.style.display =
       "block";
 
+
     cameraMessage.textContent =
       "Unable to initialize camera";
 
 
     startButton.disabled =
       false;
+
 
     startButton.textContent =
       "TRY AGAIN";
@@ -305,7 +338,7 @@ function detectionLoop() {
 
 
 // ============================================================
-// PROCESS DETECTION
+// PROCESS DETECTION RESULT
 // ============================================================
 
 function processDetectionResult(
@@ -333,10 +366,13 @@ function processDetectionResult(
   // NO HANDS
   // ==========================================================
 
-  if (hands.length === 0) {
+  if (
+    hands.length === 0
+  ) {
 
     landmarkCount.textContent =
       "0";
+
 
     handStatus.textContent =
       "NOT DETECTED";
@@ -346,6 +382,7 @@ function processDetectionResult(
       "Left"
     );
 
+
     clearHandPanel(
       "Right"
     );
@@ -354,11 +391,13 @@ function processDetectionResult(
     previousFeatureStates.Left =
       null;
 
+
     previousFeatureStates.Right =
       null;
 
 
     signalProcessors.Left.reset();
+
 
     signalProcessors.Right.reset();
 
@@ -367,21 +406,37 @@ function processDetectionResult(
       [];
 
 
+    window.crossModalMapping = {
+
+      profile:
+        mappingEngine.getProfile(),
+
+      output: [],
+    };
+
+
+    window.mappingStudio =
+      mappingEngine;
+
+
     return;
   }
 
 
   // ==========================================================
-  // GLOBAL STATUS
+  // GLOBAL TRACKING STATUS
   // ==========================================================
 
   landmarkCount.textContent =
     String(
+
       hands.reduce(
+
         (
           total,
           hand
         ) =>
+
           total +
           hand.landmarks.length,
 
@@ -392,6 +447,7 @@ function processDetectionResult(
 
   const visibleHands =
     new Set(
+
       hands.map(
         (hand) =>
           hand.label
@@ -446,7 +502,9 @@ function processDetectionResult(
   ) {
 
     if (
-      !visibleHands.has(side)
+      !visibleHands.has(
+        side
+      )
     ) {
 
       clearHandPanel(
@@ -454,7 +512,9 @@ function processDetectionResult(
       );
 
 
-      previousFeatureStates[side] =
+      previousFeatureStates[
+        side
+      ] =
         null;
 
 
@@ -473,7 +533,10 @@ function processDetectionResult(
   // PROCESS EACH HAND
   // ==========================================================
 
-  for (const hand of hands) {
+  for (
+    const hand
+    of hands
+  ) {
 
     const {
       label,
@@ -483,19 +546,24 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // RAW FEATURES
+    // 1. RAW FEATURES
     // --------------------------------------------------------
 
     const rawFeatures =
       extractHandFeatures(
+
         landmarks,
+
         previousFeatureStates[
           label
         ] ?? null
       );
 
 
-    if (!rawFeatures) {
+    if (
+      !rawFeatures
+    ) {
+
       continue;
     }
 
@@ -507,7 +575,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // SIGNAL PROCESSING
+    // 2. SIGNAL PROCESSING
     // --------------------------------------------------------
 
     const processor =
@@ -516,7 +584,10 @@ function processDetectionResult(
       ];
 
 
-    if (!processor) {
+    if (
+      !processor
+    ) {
+
       continue;
     }
 
@@ -527,13 +598,16 @@ function processDetectionResult(
       );
 
 
-    if (!features) {
+    if (
+      !features
+    ) {
+
       continue;
     }
 
 
     // --------------------------------------------------------
-    // DRAW
+    // 3. DRAW HAND
     // --------------------------------------------------------
 
     drawHandSkeleton(
@@ -543,7 +617,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // UI
+    // 4. UPDATE UI
     // --------------------------------------------------------
 
     if (
@@ -560,15 +634,17 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // OUTPUT DATA
-    //
-    // This becomes the input of Mapping Engine.
+    // 5. PREPARE MAPPING INPUT
     // --------------------------------------------------------
 
     currentData.push({
+
       label,
 
       confidence,
+
+
+      // Continuous features
 
       x:
         features.x,
@@ -585,6 +661,9 @@ function processDetectionResult(
       speed:
         features.speed,
 
+
+      // Gesture event states
+
       pinchActive:
         features.pinchActive,
 
@@ -598,11 +677,49 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // DEVELOPMENT / FUTURE MAPPING INPUT
+  // CV OUTPUT
   // ==========================================================
 
   window.crossModalHands =
     currentData;
+
+
+  // ==========================================================
+  // PERSONAL MAPPING LAYER
+  // ==========================================================
+
+  const mappingOutput =
+    mappingEngine.resolve(
+      currentData
+    );
+
+
+  window.crossModalMapping = {
+
+    profile:
+      mappingEngine.getProfile(),
+
+    output:
+      mappingOutput,
+  };
+
+
+  // ==========================================================
+  // DEVELOPMENT API
+  //
+  // Console example:
+  //
+  // window.mappingStudio.getProfile()
+  //
+  // window.mappingStudio.updateTarget(
+  //   "left-y",
+  //   "music",
+  //   "texture"
+  // )
+  // ==========================================================
+
+  window.mappingStudio =
+    mappingEngine;
 }
 
 
@@ -634,31 +751,43 @@ function getDetectedHands(
   ) {
 
     const landmarks =
-      result.landmarks[i];
+      result.landmarks[
+        i
+      ];
 
 
     const handedness =
-      result.handedness?.[i]?.[0];
+      result.handedness
+        ?.[i]
+        ?.[0];
 
 
     const detectedLabel =
-      handedness?.categoryName;
+      handedness
+        ?.categoryName;
 
 
     const label =
+
       detectedLabel === "Left" ||
       detectedLabel === "Right"
+
         ? detectedLabel
+
         : `Hand-${i + 1}`;
 
 
     const confidence =
-      handedness?.score ?? 0;
+      handedness
+        ?.score ?? 0;
 
 
     hands.push({
+
       label,
+
       confidence,
+
       landmarks,
     });
   }
@@ -684,14 +813,19 @@ function updateHandPanel(
     ];
 
 
-  if (!ui) {
+  if (
+    !ui
+  ) {
+
     return;
   }
 
 
-  ui.panel.classList.add(
-    "detected"
-  );
+  ui.panel
+    .classList
+    .add(
+      "detected"
+    );
 
 
   ui.presence.textContent =
@@ -740,24 +874,28 @@ function updateHandPanel(
 
 
   // ----------------------------------------------------------
-  // Optional visual state for active pinch
+  // Pinch visual state
   // ----------------------------------------------------------
 
   if (
     features.pinchActive
   ) {
 
-    ui.panel.classList.add(
-      "pinching"
-    );
+    ui.panel
+      .classList
+      .add(
+        "pinching"
+      );
 
   }
 
   else {
 
-    ui.panel.classList.remove(
-      "pinching"
-    );
+    ui.panel
+      .classList
+      .remove(
+        "pinching"
+      );
   }
 }
 
@@ -776,18 +914,26 @@ function clearHandPanel(
     ];
 
 
-  if (!ui) {
+  if (
+    !ui
+  ) {
+
     return;
   }
 
 
-  ui.panel.classList.remove(
-    "detected"
-  );
+  ui.panel
+    .classList
+    .remove(
+      "detected"
+    );
 
-  ui.panel.classList.remove(
-    "pinching"
-  );
+
+  ui.panel
+    .classList
+    .remove(
+      "pinching"
+    );
 
 
   ui.presence.textContent =
@@ -857,7 +1003,9 @@ function setMetric(
 
   const normalized =
     Math.max(
+
       0,
+
       Math.min(
         1,
         value
@@ -877,7 +1025,7 @@ function setMetric(
 
 
 // ============================================================
-// DRAW HAND
+// DRAW HAND SKELETON
 // ============================================================
 
 function drawHandSkeleton(
@@ -923,8 +1071,11 @@ function drawHandSkeleton(
 
 
   const color =
+
     label === "Left"
+
       ? "#5F9FFF"
+
       : "#FF7746";
 
 
@@ -935,6 +1086,7 @@ function drawHandSkeleton(
   ctx.strokeStyle =
     color;
 
+
   ctx.lineWidth =
     3;
 
@@ -943,13 +1095,15 @@ function drawHandSkeleton(
     const [
       start,
       end,
-    ] of connections
+    ]
+    of connections
   ) {
 
     const a =
       landmarks[
         start
       ];
+
 
     const b =
       landmarks[
@@ -961,6 +1115,7 @@ function drawHandSkeleton(
 
 
     ctx.moveTo(
+
       a.x *
         canvas.width,
 
@@ -970,6 +1125,7 @@ function drawHandSkeleton(
 
 
     ctx.lineTo(
+
       b.x *
         canvas.width,
 
@@ -987,12 +1143,14 @@ function drawHandSkeleton(
   // ----------------------------------------------------------
 
   landmarks.forEach(
+
     (
       point,
       index
     ) => {
 
       const interactionPoint =
+
         index === 4 ||
         index === 8;
 
@@ -1001,6 +1159,7 @@ function drawHandSkeleton(
 
 
       ctx.arc(
+
         point.x *
           canvas.width,
 
@@ -1018,8 +1177,11 @@ function drawHandSkeleton(
 
 
       ctx.fillStyle =
+
         interactionPoint
+
           ? "#FFFFFF"
+
           : color;
 
 
@@ -1033,8 +1195,10 @@ function drawHandSkeleton(
         ctx.strokeStyle =
           color;
 
+
         ctx.lineWidth =
           2;
+
 
         ctx.stroke();
       }
@@ -1068,6 +1232,7 @@ function resizeCanvas() {
 
     canvas.width =
       video.videoWidth;
+
 
     canvas.height =
       video.videoHeight;
