@@ -2,8 +2,8 @@ import "./style.css";
 
 import {
   createHandTracker,
+  extractHandFeatures,
 } from "./cv/handTracking.js";
-
 
 const video =
   document.querySelector("#webcam");
@@ -29,10 +29,42 @@ const landmarkCount =
 const handStatus =
   document.querySelector("#handStatus");
 
+const xValue =
+  document.querySelector("#xValue");
+
+const yValue =
+  document.querySelector("#yValue");
+
+const pinchValue =
+  document.querySelector("#pinchValue");
+
+const openValue =
+  document.querySelector("#openValue");
+
+const speedValue =
+  document.querySelector("#speedValue");
+
+
+const xBar =
+  document.querySelector("#xBar");
+
+const yBar =
+  document.querySelector("#yBar");
+
+const pinchBar =
+  document.querySelector("#pinchBar");
+
+const openBar =
+  document.querySelector("#openBar");
+
+const speedBar =
+  document.querySelector("#speedBar");
+
 
 let handTracker = null;
 
 let previousVideoTime = -1;
+let previousFeatureState = null;
 
 
 startButton.addEventListener(
@@ -191,6 +223,21 @@ function drawHand(result) {
   handStatus.textContent =
     "DETECTED";
 
+const features =
+  extractHandFeatures(
+    landmarks,
+    previousFeatureState
+  );
+
+
+previousFeatureState =
+  features.state;
+
+
+updateFeatureUI(
+  features
+);
+
 
   const connections = [
 
@@ -311,4 +358,55 @@ function resizeCanvas() {
     canvas.height =
       video.videoHeight;
   }
+}
+
+
+function updateFeatureUI(
+  features
+) {
+
+  updateFeature(
+    xValue,
+    xBar,
+    features.x
+  );
+
+  updateFeature(
+    yValue,
+    yBar,
+    features.y
+  );
+
+  updateFeature(
+    pinchValue,
+    pinchBar,
+    features.pinch
+  );
+
+  updateFeature(
+    openValue,
+    openBar,
+    features.openness
+  );
+
+  updateFeature(
+    speedValue,
+    speedBar,
+    features.speed
+  );
+}
+
+
+
+function updateFeature(
+  valueElement,
+  barElement,
+  value
+) {
+
+  valueElement.textContent =
+    value.toFixed(2);
+
+  barElement.style.width =
+    `${value * 100}%`;
 }
