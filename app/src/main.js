@@ -17,6 +17,10 @@ import {
   createMappingStudioUI,
 } from "./mapping/mappingUI.js";
 
+import {
+  createMusicEngine,
+} from "./audio/musicEngine.js";
+
 
 // ============================================================
 // CORE DOM
@@ -154,10 +158,9 @@ let previousVideoTime =
   -1;
 
 
-// Raw CV history.
-//
-// extractHandFeatures() needs the previous
-// hand position to calculate movement speed.
+// ============================================================
+// RAW FEATURE HISTORY
+// ============================================================
 
 const previousFeatureStates = {
 
@@ -170,7 +173,7 @@ const previousFeatureStates = {
 
 
 // ============================================================
-// SIGNAL PROCESSING
+// SIGNAL PROCESSORS
 // ============================================================
 
 const signalProcessors = {
@@ -192,6 +195,14 @@ const mappingEngine =
 
 
 // ============================================================
+// MUSIC ENGINE
+// ============================================================
+
+const musicEngine =
+  createMusicEngine();
+
+
+// ============================================================
 // PERSONAL MAPPING UI
 // ============================================================
 
@@ -207,7 +218,7 @@ const mappingUI =
 
 
 // ============================================================
-// EXPOSE DEVELOPMENT API
+// DEVELOPMENT API
 // ============================================================
 
 window.mappingStudio =
@@ -224,6 +235,9 @@ window.crossModalMapping = {
   output:
     [],
 };
+
+window.crossModalAudio =
+  musicEngine.getState();
 
 
 // ============================================================
@@ -250,19 +264,40 @@ async function startSession() {
     "LOADING";
 
 
+  // ==========================================================
+  // START AUDIO
+  //
+  // Browser audio must be initialized from a user gesture.
+  // START SESSION is that user gesture.
+  // ==========================================================
+
   try {
 
-    // --------------------------------------------------------
-    // Initialize MediaPipe
-    // --------------------------------------------------------
+    await musicEngine.start();
+
+    window.crossModalAudio =
+      musicEngine.getState();
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Unable to initialize audio:",
+      error
+    );
+  }
+
+
+  // ==========================================================
+  // START CAMERA + MEDIAPIPE
+  // ==========================================================
+
+  try {
 
     handTracker =
       await createHandTracker();
 
-
-    // --------------------------------------------------------
-    // Request webcam
-    // --------------------------------------------------------
 
     const stream =
       await navigator.mediaDevices
@@ -353,7 +388,7 @@ async function startSession() {
 
 
 // ============================================================
-// CV LOOP
+// DETECTION LOOP
 // ============================================================
 
 function detectionLoop() {
@@ -481,12 +516,16 @@ function processDetectionResult(
     );
 
 
+    window.crossModalAudio =
+      musicEngine.getState();
+
+
     return;
   }
 
 
   // ==========================================================
-  // GLOBAL TRACKING DATA
+  // GLOBAL TRACKING INFO
   // ==========================================================
 
   landmarkCount.textContent =
@@ -553,7 +592,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // RESET DISAPPEARED HANDS
+  // RESET HANDS THAT DISAPPEARED
   // ==========================================================
 
   for (
@@ -589,7 +628,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // BUILD CURRENT INPUT DATA
+  // CURRENT NORMALIZED INPUT DATA
   // ==========================================================
 
   const currentData =
@@ -674,7 +713,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // 3. HAND SKELETON
+    // 3. DRAW CV SKELETON
     // --------------------------------------------------------
 
     drawHandSkeleton(
@@ -684,7 +723,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // 4. TECHNICAL FEATURE UI
+    // 4. UPDATE TECHNICAL DATA UI
     // --------------------------------------------------------
 
     if (
@@ -704,7 +743,7 @@ function processDetectionResult(
 
 
     // --------------------------------------------------------
-    // 5. BUILD NORMALIZED INPUT OBJECT
+    // 5. NORMALIZED CROSS-MODAL INPUT
     // --------------------------------------------------------
 
     currentData.push({
@@ -732,7 +771,7 @@ function processDetectionResult(
         features.speed,
 
 
-      // Gesture states
+      // Gesture event states
 
       pinchActive:
         features.pinchActive,
@@ -775,17 +814,32 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // PERSONAL MAPPING UI LIVE VALUES
+  // MAPPING STUDIO LIVE VALUES
   // ==========================================================
 
   mappingUI.updateLiveValues(
     mappingOutput
   );
+
+
+  // ==========================================================
+  // MUSIC ENGINE
+  //
+  // Mapping semantic output is now translated into sound.
+  // ==========================================================
+
+  musicEngine.process(
+    mappingOutput
+  );
+
+
+  window.crossModalAudio =
+    musicEngine.getState();
 }
 
 
 // ============================================================
-// PARSE MEDIAPIPE HANDS
+// PARSE MEDIAPIPE RESULT
 // ============================================================
 
 function getDetectedHands(
@@ -859,7 +913,7 @@ function getDetectedHands(
 
 
 // ============================================================
-// UPDATE HAND DATA PANEL
+// UPDATE ONE HAND PANEL
 // ============================================================
 
 function updateHandPanel(
@@ -949,9 +1003,9 @@ function updateHandPanel(
   );
 
 
-  // ----------------------------------------------------------
-  // Pinch UI feedback
-  // ----------------------------------------------------------
+  // ==========================================================
+  // PINCH STATE
+  // ==========================================================
 
   if (
     features.pinchActive
@@ -977,7 +1031,7 @@ function updateHandPanel(
 
 
 // ============================================================
-// CLEAR HAND DATA PANEL
+// CLEAR ONE HAND PANEL
 // ============================================================
 
 function clearHandPanel(
@@ -1215,7 +1269,7 @@ function drawHandSkeleton(
 
 
   // ==========================================================
-  // POINTS
+  // LANDMARK POINTS
   // ==========================================================
 
   landmarks.forEach(
@@ -1284,7 +1338,7 @@ function drawHandSkeleton(
 
 
 // ============================================================
-// RESIZE CANVAS
+// CANVAS RESIZE
 // ============================================================
 
 function resizeCanvas() {
