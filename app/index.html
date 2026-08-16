@@ -11,7 +11,6 @@
   />
 
   <title>Cross-modal Mapping Studio</title>
-<link rel="stylesheet" href="/src/style.css" />
 </head>
 
 
@@ -19,8 +18,14 @@
 
   <div id="app">
 
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
     <header>
+
       <div>
+
         <p class="eyebrow">
           MULTISENSORY MUSIC SYSTEM / TECHNICAL PROTOTYPE
         </p>
@@ -28,15 +33,27 @@
         <h1>
           Cross-modal Mapping Studio
         </h1>
+
       </div>
+
 
       <div id="status">
         OFFLINE
       </div>
+
     </header>
 
 
+    <!-- =====================================================
+         WORKSPACE
+    ====================================================== -->
+
     <main>
+
+
+      <!-- ===================================================
+           CAMERA / GESTURE INPUT
+      ==================================================== -->
 
       <section class="camera-section">
 
@@ -61,9 +78,11 @@
             playsinline
           ></video>
 
+
           <canvas
             id="overlay"
           ></canvas>
+
 
           <div
             id="cameraMessage"
@@ -82,117 +101,472 @@
       </section>
 
 
+
+      <!-- ===================================================
+           DUAL-HAND DATA PANEL
+      ==================================================== -->
+
       <aside>
 
-        <p class="eyebrow">
-          LIVE TRACKING
-        </p>
 
-        <h2>
-          Physical Expression
-        </h2>
+        <!-- Header -->
 
-        <p>
-          Hand movement is translated into
-          continuous machine-readable body data.
-        </p>
+        <div class="side-heading">
+
+          <div>
+
+            <p class="eyebrow">
+              LIVE BODY FEATURES
+            </p>
+
+            <h2>
+              Dual-hand Expression
+            </h2>
+
+          </div>
 
 
-        <div class="flow">
+          <div class="global-tracking">
 
-          <span>GESTURE</span>
-          <b>→</b>
+            <div>
 
-          <span>LANDMARKS</span>
-          <b>→</b>
+              <small>
+                LANDMARKS
+              </small>
 
-          <span>MAPPING</span>
-          <b>→</b>
+              <strong id="landmarkCount">
+                0
+              </strong>
 
-          <span>MUSIC</span>
+            </div>
+
+
+            <div>
+
+              <small>
+                TRACKING
+              </small>
+
+              <strong id="handStatus">
+                NOT DETECTED
+              </strong>
+
+            </div>
+
+          </div>
 
         </div>
 
 
-        <div class="tracking-info">
+        <p class="side-description">
+          Each hand forms an independent input channel.
+          Musical meaning will be assigned through the
+          Personal Mapping Layer.
+        </p>
+
+
+
+        <!-- =================================================
+             LEFT + RIGHT HAND
+        ================================================== -->
+
+        <div class="dual-hand-grid">
+
+
+          <!-- ===============================================
+               LEFT HAND
+          ================================================ -->
+
+          <section
+            id="leftPanel"
+            class="hand-panel left"
+          >
+
+            <div class="hand-panel-header">
+
+              <div>
+
+                <span class="hand-dot"></span>
+
+                <strong>
+                  LEFT HAND
+                </strong>
+
+              </div>
+
+
+              <span
+                id="leftPresence"
+                class="presence"
+              >
+                WAITING
+              </span>
+
+            </div>
+
+
+
+            <div class="confidence-row">
+
+              <span>
+                TRACKING CONFIDENCE
+              </span>
+
+              <strong id="leftConfidence">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- X -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  X POSITION
+                </span>
+
+                <strong id="leftXValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="leftXBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- Y -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  Y POSITION
+                </span>
+
+                <strong id="leftYValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="leftYBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- PINCH -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  PINCH
+                </span>
+
+                <strong id="leftPinchValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="leftPinchBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- OPENNESS -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  OPENNESS
+                </span>
+
+                <strong id="leftOpenValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="leftOpenBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- ENERGY -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  ENERGY
+                </span>
+
+                <strong id="leftSpeedValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="leftSpeedBar"></div>
+              </div>
+
+            </div>
+
+          </section>
+
+
+
+          <!-- ===============================================
+               RIGHT HAND
+          ================================================ -->
+
+          <section
+            id="rightPanel"
+            class="hand-panel right"
+          >
+
+            <div class="hand-panel-header">
+
+              <div>
+
+                <span class="hand-dot"></span>
+
+                <strong>
+                  RIGHT HAND
+                </strong>
+
+              </div>
+
+
+              <span
+                id="rightPresence"
+                class="presence"
+              >
+                WAITING
+              </span>
+
+            </div>
+
+
+
+            <div class="confidence-row">
+
+              <span>
+                TRACKING CONFIDENCE
+              </span>
+
+              <strong id="rightConfidence">
+                —
+              </strong>
+
+            </div>
+
+
+
+            <!-- X -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  X POSITION
+                </span>
+
+                <strong id="rightXValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="rightXBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- Y -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  Y POSITION
+                </span>
+
+                <strong id="rightYValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="rightYBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- PINCH -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  PINCH
+                </span>
+
+                <strong id="rightPinchValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="rightPinchBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- OPENNESS -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  OPENNESS
+                </span>
+
+                <strong id="rightOpenValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="rightOpenBar"></div>
+              </div>
+
+            </div>
+
+
+
+            <!-- ENERGY -->
+
+            <div class="hand-feature">
+
+              <div>
+
+                <span>
+                  ENERGY
+                </span>
+
+                <strong id="rightSpeedValue">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="feature-bar">
+                <div id="rightSpeedBar"></div>
+              </div>
+
+            </div>
+
+          </section>
+
+        </div>
+
+
+
+        <!-- =================================================
+             NEXT SYSTEM LAYER
+        ================================================== -->
+
+        <div class="mapping-preview">
+
+          <p class="eyebrow">
+            NEXT / PERSONAL MAPPING
+          </p>
+
 
           <div>
-            <small>LANDMARKS</small>
-            <strong id="landmarkCount">—</strong>
-          </div>
 
-          <div>
-            <small>HAND</small>
-            <strong id="handStatus">NOT DETECTED</strong>
+            <span>
+              HAND
+            </span>
+
+            <b>→</b>
+
+            <span>
+              FEATURE
+            </span>
+
+            <b>→</b>
+
+            <span>
+              MUSIC
+            </span>
+
+            <b>→</b>
+
+            <span>
+              VISUAL
+            </span>
+
+            <b>→</b>
+
+            <span>
+              BODY
+            </span>
+
           </div>
 
         </div>
-<div class="feature-section">
-
-  <p class="eyebrow">
-    CONTINUOUS BODY FEATURES
-  </p>
-
-  <div class="feature">
-    <div>
-      <span>X POSITION</span>
-      <strong id="xValue">—</strong>
-    </div>
-
-    <div class="feature-bar">
-      <div id="xBar"></div>
-    </div>
-  </div>
-
-
-  <div class="feature">
-    <div>
-      <span>Y POSITION</span>
-      <strong id="yValue">—</strong>
-    </div>
-
-    <div class="feature-bar">
-      <div id="yBar"></div>
-    </div>
-  </div>
-
-
-  <div class="feature orange">
-    <div>
-      <span>PINCH</span>
-      <strong id="pinchValue">—</strong>
-    </div>
-
-    <div class="feature-bar">
-      <div id="pinchBar"></div>
-    </div>
-  </div>
-
-
-  <div class="feature">
-    <div>
-      <span>OPENNESS</span>
-      <strong id="openValue">—</strong>
-    </div>
-
-    <div class="feature-bar">
-      <div id="openBar"></div>
-    </div>
-  </div>
-
-
-  <div class="feature">
-    <div>
-      <span>MOVEMENT ENERGY</span>
-      <strong id="speedValue">—</strong>
-    </div>
-
-    <div class="feature-bar">
-      <div id="speedBar"></div>
-    </div>
-  </div>
-
-</div>
 
       </aside>
 

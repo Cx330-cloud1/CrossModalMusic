@@ -35,39 +35,95 @@ const handStatus =
   document.querySelector("#handStatus");
 
 
-// Current single feature panel.
-// We will replace this with independent Left / Right panels
-// in the next development step.
+// ============================================================
+// LEFT / RIGHT UI
+// ============================================================
 
-const xValue =
-  document.querySelector("#xValue");
+const handUI = {
 
-const yValue =
-  document.querySelector("#yValue");
+  Left: {
+    panel:
+      document.querySelector("#leftPanel"),
 
-const pinchValue =
-  document.querySelector("#pinchValue");
+    presence:
+      document.querySelector("#leftPresence"),
 
-const openValue =
-  document.querySelector("#openValue");
+    confidence:
+      document.querySelector("#leftConfidence"),
 
-const speedValue =
-  document.querySelector("#speedValue");
+    xValue:
+      document.querySelector("#leftXValue"),
 
-const xBar =
-  document.querySelector("#xBar");
+    xBar:
+      document.querySelector("#leftXBar"),
 
-const yBar =
-  document.querySelector("#yBar");
+    yValue:
+      document.querySelector("#leftYValue"),
 
-const pinchBar =
-  document.querySelector("#pinchBar");
+    yBar:
+      document.querySelector("#leftYBar"),
 
-const openBar =
-  document.querySelector("#openBar");
+    pinchValue:
+      document.querySelector("#leftPinchValue"),
 
-const speedBar =
-  document.querySelector("#speedBar");
+    pinchBar:
+      document.querySelector("#leftPinchBar"),
+
+    openValue:
+      document.querySelector("#leftOpenValue"),
+
+    openBar:
+      document.querySelector("#leftOpenBar"),
+
+    speedValue:
+      document.querySelector("#leftSpeedValue"),
+
+    speedBar:
+      document.querySelector("#leftSpeedBar"),
+  },
+
+
+  Right: {
+    panel:
+      document.querySelector("#rightPanel"),
+
+    presence:
+      document.querySelector("#rightPresence"),
+
+    confidence:
+      document.querySelector("#rightConfidence"),
+
+    xValue:
+      document.querySelector("#rightXValue"),
+
+    xBar:
+      document.querySelector("#rightXBar"),
+
+    yValue:
+      document.querySelector("#rightYValue"),
+
+    yBar:
+      document.querySelector("#rightYBar"),
+
+    pinchValue:
+      document.querySelector("#rightPinchValue"),
+
+    pinchBar:
+      document.querySelector("#rightPinchBar"),
+
+    openValue:
+      document.querySelector("#rightOpenValue"),
+
+    openBar:
+      document.querySelector("#rightOpenBar"),
+
+    speedValue:
+      document.querySelector("#rightSpeedValue"),
+
+    speedBar:
+      document.querySelector("#rightSpeedBar"),
+  },
+};
 
 
 // ============================================================
@@ -78,12 +134,6 @@ let handTracker = null;
 
 let previousVideoTime = -1;
 
-
-// Each hand needs its own previous state.
-//
-// This is essential for movement-energy calculation.
-// Otherwise one hand's movement would contaminate
-// the speed value of the other hand.
 
 const previousFeatureStates = {
   Left: null,
@@ -114,17 +164,9 @@ async function startSession() {
 
   try {
 
-    // --------------------------------------------------------
-    // Initialize MediaPipe
-    // --------------------------------------------------------
-
     handTracker =
       await createHandTracker();
 
-
-    // --------------------------------------------------------
-    // Request webcam
-    // --------------------------------------------------------
 
     const stream =
       await navigator.mediaDevices
@@ -166,10 +208,6 @@ async function startSession() {
       "SESSION ACTIVE";
 
 
-    // --------------------------------------------------------
-    // Start CV loop
-    // --------------------------------------------------------
-
     requestAnimationFrame(
       detectionLoop
     );
@@ -183,6 +221,7 @@ async function startSession() {
       error
     );
 
+
     statusElement.textContent =
       "ERROR";
 
@@ -190,11 +229,13 @@ async function startSession() {
       "live"
     );
 
+
     cameraMessage.style.display =
       "block";
 
     cameraMessage.textContent =
       "Unable to initialize camera";
+
 
     startButton.disabled =
       false;
@@ -266,7 +307,7 @@ function processDetectionResult(
 
 
   // ----------------------------------------------------------
-  // No hand
+  // NO HAND
   // ----------------------------------------------------------
 
   if (hands.length === 0) {
@@ -278,6 +319,10 @@ function processDetectionResult(
       "NOT DETECTED";
 
 
+    clearHandPanel("Left");
+    clearHandPanel("Right");
+
+
     previousFeatureStates.Left =
       null;
 
@@ -285,41 +330,28 @@ function processDetectionResult(
       null;
 
 
-    clearFeatureUI();
+    window.crossModalHands = [];
 
     return;
   }
 
 
   // ----------------------------------------------------------
-  // Basic tracking information
+  // GLOBAL STATUS
   // ----------------------------------------------------------
 
   landmarkCount.textContent =
     String(
-      hands.length * 21
+      hands.reduce(
+        (total, hand) =>
+          total +
+          hand.landmarks.length,
+        0
+      )
     );
 
 
-  if (hands.length === 2) {
-
-    handStatus.textContent =
-      "LEFT + RIGHT";
-
-  }
-
-  else {
-
-    handStatus.textContent =
-      hands[0].label.toUpperCase();
-  }
-
-
-  // ----------------------------------------------------------
-  // Determine which hands currently exist
-  // ----------------------------------------------------------
-
-  const visibleLabels =
+  const visibleHands =
     new Set(
       hands.map(
         (hand) =>
@@ -329,48 +361,86 @@ function processDetectionResult(
 
 
   if (
-    !visibleLabels.has("Left")
+    visibleHands.has("Left") &&
+    visibleHands.has("Right")
   ) {
 
-    previousFeatureStates.Left =
-      null;
+    handStatus.textContent =
+      "LEFT + RIGHT";
+
   }
 
-
-  if (
-    !visibleLabels.has("Right")
+  else if (
+    visibleHands.has("Left")
   ) {
 
-    previousFeatureStates.Right =
-      null;
+    handStatus.textContent =
+      "LEFT";
+
+  }
+
+  else if (
+    visibleHands.has("Right")
+  ) {
+
+    handStatus.textContent =
+      "RIGHT";
+
+  }
+
+  else {
+
+    handStatus.textContent =
+      `${hands.length} HAND`;
   }
 
 
   // ----------------------------------------------------------
-  // Process every detected hand independently
+  // CLEAR DISAPPEARED HAND
   // ----------------------------------------------------------
 
-  const handData = [];
+  for (
+    const side of [
+      "Left",
+      "Right",
+    ]
+  ) {
 
+    if (
+      !visibleHands.has(side)
+    ) {
+
+      clearHandPanel(
+        side
+      );
+
+
+      previousFeatureStates[side] =
+        null;
+    }
+  }
+
+
+  const currentData = [];
+
+
+  // ----------------------------------------------------------
+  // PROCESS EVERY HAND
+  // ----------------------------------------------------------
 
   for (const hand of hands) {
 
     const {
       label,
-      landmarks,
       confidence,
+      landmarks,
     } = hand;
-
-
-    const previousState =
-      previousFeatureStates[label]
-      ?? null;
 
 
     const features =
       extractHandFeatures(
         landmarks,
-        previousState
+        previousFeatureStates[label] ?? null
       );
 
 
@@ -389,88 +459,49 @@ function processDetectionResult(
     );
 
 
-    handData.push({
+    if (
+      label === "Left" ||
+      label === "Right"
+    ) {
+
+      updateHandPanel(
+        label,
+        features,
+        confidence
+      );
+    }
+
+
+    currentData.push({
       label,
       confidence,
-      features,
-      landmarks,
+
+      x:
+        features.x,
+
+      y:
+        features.y,
+
+      pinch:
+        features.pinch,
+
+      openness:
+        features.openness,
+
+      speed:
+        features.speed,
     });
   }
 
 
-  // ----------------------------------------------------------
-  // TEMPORARY UI
-  //
-  // Current HTML still contains only one feature panel.
-  // Until we build the dual-hand interface, show one hand here.
-  //
-  // Priority:
-  // Left -> Right -> first detected hand
-  // ----------------------------------------------------------
-
-  const primaryHand =
-    handData.find(
-      (hand) =>
-        hand.label === "Left"
-    )
-    ??
-    handData.find(
-      (hand) =>
-        hand.label === "Right"
-    )
-    ??
-    handData[0];
-
-
-  if (primaryHand) {
-
-    updateFeatureUI(
-      primaryHand.features
-    );
-  }
-
-
-  // ----------------------------------------------------------
-  // Development access
-  //
-  // Makes current hand data available in DevTools:
-  //
-  // window.crossModalHands
-  //
-  // This will later be replaced by the Mapping Engine.
-  // ----------------------------------------------------------
-
+  // Future Mapping Engine input
   window.crossModalHands =
-    handData.map(
-      ({
-        label,
-        confidence,
-        features,
-      }) => ({
-        label,
-        confidence,
-
-        x:
-          features.x,
-
-        y:
-          features.y,
-
-        pinch:
-          features.pinch,
-
-        openness:
-          features.openness,
-
-        speed:
-          features.speed,
-      })
-    );
+    currentData;
 }
 
 
 // ============================================================
-// HAND RESULT PARSER
+// MEDIAPIPE RESULT → HAND OBJECTS
 // ============================================================
 
 function getDetectedHands(
@@ -507,24 +538,11 @@ function getDetectedHands(
       handedness?.categoryName;
 
 
-    let label;
-
-
-    if (
+    const label =
       detectedLabel === "Left" ||
       detectedLabel === "Right"
-    ) {
-
-      label =
-        detectedLabel;
-
-    }
-
-    else {
-
-      label =
-        `Hand-${i + 1}`;
-    }
+        ? detectedLabel
+        : `Hand-${i + 1}`;
 
 
     const confidence =
@@ -540,6 +558,181 @@ function getDetectedHands(
 
 
   return hands;
+}
+
+
+// ============================================================
+// UPDATE ONE HAND PANEL
+// ============================================================
+
+function updateHandPanel(
+  side,
+  features,
+  confidence
+) {
+
+  const ui =
+    handUI[side];
+
+
+  if (!ui) {
+    return;
+  }
+
+
+  ui.panel.classList.add(
+    "detected"
+  );
+
+
+  ui.presence.textContent =
+    "LIVE";
+
+
+  ui.confidence.textContent =
+    `${Math.round(
+      confidence * 100
+    )}%`;
+
+
+  setMetric(
+    ui.xValue,
+    ui.xBar,
+    features.x
+  );
+
+
+  setMetric(
+    ui.yValue,
+    ui.yBar,
+    features.y
+  );
+
+
+  setMetric(
+    ui.pinchValue,
+    ui.pinchBar,
+    features.pinch
+  );
+
+
+  setMetric(
+    ui.openValue,
+    ui.openBar,
+    features.openness
+  );
+
+
+  setMetric(
+    ui.speedValue,
+    ui.speedBar,
+    features.speed
+  );
+}
+
+
+// ============================================================
+// CLEAR ONE HAND PANEL
+// ============================================================
+
+function clearHandPanel(
+  side
+) {
+
+  const ui =
+    handUI[side];
+
+
+  if (!ui) {
+    return;
+  }
+
+
+  ui.panel.classList.remove(
+    "detected"
+  );
+
+
+  ui.presence.textContent =
+    "WAITING";
+
+
+  ui.confidence.textContent =
+    "—";
+
+
+  const metrics = [
+
+    [
+      ui.xValue,
+      ui.xBar,
+    ],
+
+    [
+      ui.yValue,
+      ui.yBar,
+    ],
+
+    [
+      ui.pinchValue,
+      ui.pinchBar,
+    ],
+
+    [
+      ui.openValue,
+      ui.openBar,
+    ],
+
+    [
+      ui.speedValue,
+      ui.speedBar,
+    ],
+  ];
+
+
+  for (
+    const [
+      valueElement,
+      barElement,
+    ] of metrics
+  ) {
+
+    valueElement.textContent =
+      "—";
+
+
+    barElement.style.width =
+      "0%";
+  }
+}
+
+
+// ============================================================
+// METRIC UI
+// ============================================================
+
+function setMetric(
+  valueElement,
+  barElement,
+  value
+) {
+
+  const normalized =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        value
+      )
+    );
+
+
+  valueElement.textContent =
+    normalized.toFixed(2);
+
+
+  barElement.style.width =
+    `${normalized * 100}%`;
 }
 
 
@@ -589,21 +782,18 @@ function drawHandSkeleton(
   ];
 
 
-  const handColor =
+  const color =
     label === "Left"
       ? "#5F9FFF"
       : "#FF7746";
 
 
-  // ----------------------------------------------------------
-  // Connections
-  // ----------------------------------------------------------
+  // Lines
+  ctx.strokeStyle =
+    color;
 
   ctx.lineWidth =
     3;
-
-  ctx.strokeStyle =
-    handColor;
 
 
   for (
@@ -643,19 +833,16 @@ function drawHandSkeleton(
   }
 
 
-  // ----------------------------------------------------------
-  // Landmarks
-  // ----------------------------------------------------------
-
+  // Points
   landmarks.forEach(
     (point, index) => {
 
-      ctx.beginPath();
-
-
-      const isInteractionPoint =
+      const interactionPoint =
         index === 4 ||
         index === 8;
+
+
+      ctx.beginPath();
 
 
       ctx.arc(
@@ -665,7 +852,7 @@ function drawHandSkeleton(
         point.y *
           canvas.height,
 
-        isInteractionPoint
+        interactionPoint
           ? 8
           : 5,
 
@@ -675,24 +862,21 @@ function drawHandSkeleton(
       );
 
 
-      // Thumb tip + index tip are highlighted
-      // because they form the pinch gesture.
-
       ctx.fillStyle =
-        isInteractionPoint
+        interactionPoint
           ? "#FFFFFF"
-          : handColor;
+          : color;
 
 
       ctx.fill();
 
 
-      // Small border around interaction points
-
-      if (isInteractionPoint) {
+      if (
+        interactionPoint
+      ) {
 
         ctx.strokeStyle =
-          handColor;
+          color;
 
         ctx.lineWidth =
           2;
@@ -705,140 +889,7 @@ function drawHandSkeleton(
 
 
 // ============================================================
-// CURRENT FEATURE UI
-// ============================================================
-
-function updateFeatureUI(
-  features
-) {
-
-  updateFeature(
-    xValue,
-    xBar,
-    features.x
-  );
-
-
-  updateFeature(
-    yValue,
-    yBar,
-    features.y
-  );
-
-
-  updateFeature(
-    pinchValue,
-    pinchBar,
-    features.pinch
-  );
-
-
-  updateFeature(
-    openValue,
-    openBar,
-    features.openness
-  );
-
-
-  updateFeature(
-    speedValue,
-    speedBar,
-    features.speed
-  );
-}
-
-
-function updateFeature(
-  valueElement,
-  barElement,
-  value
-) {
-
-  if (
-    !valueElement ||
-    !barElement
-  ) {
-
-    return;
-  }
-
-
-  const safeValue =
-    Math.max(
-      0,
-      Math.min(
-        1,
-        value
-      )
-    );
-
-
-  valueElement.textContent =
-    safeValue.toFixed(2);
-
-
-  barElement.style.width =
-    `${safeValue * 100}%`;
-}
-
-
-function clearFeatureUI() {
-
-  const items = [
-
-    [
-      xValue,
-      xBar,
-    ],
-
-    [
-      yValue,
-      yBar,
-    ],
-
-    [
-      pinchValue,
-      pinchBar,
-    ],
-
-    [
-      openValue,
-      openBar,
-    ],
-
-    [
-      speedValue,
-      speedBar,
-    ],
-  ];
-
-
-  for (
-    const [
-      valueElement,
-      barElement,
-    ]
-    of items
-  ) {
-
-    if (valueElement) {
-
-      valueElement.textContent =
-        "—";
-    }
-
-
-    if (barElement) {
-
-      barElement.style.width =
-        "0%";
-    }
-  }
-}
-
-
-// ============================================================
-// CANVAS
+// CANVAS SIZE
 // ============================================================
 
 function resizeCanvas() {
