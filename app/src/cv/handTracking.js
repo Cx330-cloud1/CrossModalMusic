@@ -20,7 +20,7 @@ export async function createHandTracker() {
         },
 
         runningMode: "VIDEO",
-        numHands: 1,
+        numHands: 2,
 
         minHandDetectionConfidence: 0.5,
         minHandPresenceConfidence: 0.5,

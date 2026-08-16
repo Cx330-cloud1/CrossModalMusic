@@ -5,6 +5,11 @@ import {
   extractHandFeatures,
 } from "./cv/handTracking.js";
 
+
+// ============================================================
+// DOM
+// ============================================================
+
 const video =
   document.querySelector("#webcam");
 
@@ -29,6 +34,11 @@ const landmarkCount =
 const handStatus =
   document.querySelector("#handStatus");
 
+
+// Current single feature panel.
+// We will replace this with independent Left / Right panels
+// in the next development step.
+
 const xValue =
   document.querySelector("#xValue");
 
@@ -43,7 +53,6 @@ const openValue =
 
 const speedValue =
   document.querySelector("#speedValue");
-
 
 const xBar =
   document.querySelector("#xBar");
@@ -61,11 +70,30 @@ const speedBar =
   document.querySelector("#speedBar");
 
 
+// ============================================================
+// STATE
+// ============================================================
+
 let handTracker = null;
 
 let previousVideoTime = -1;
-let previousFeatureState = null;
 
+
+// Each hand needs its own previous state.
+//
+// This is essential for movement-energy calculation.
+// Otherwise one hand's movement would contaminate
+// the speed value of the other hand.
+
+const previousFeatureStates = {
+  Left: null,
+  Right: null,
+};
+
+
+// ============================================================
+// START
+// ============================================================
 
 startButton.addEventListener(
   "click",
@@ -86,9 +114,17 @@ async function startSession() {
 
   try {
 
+    // --------------------------------------------------------
+    // Initialize MediaPipe
+    // --------------------------------------------------------
+
     handTracker =
       await createHandTracker();
 
+
+    // --------------------------------------------------------
+    // Request webcam
+    // --------------------------------------------------------
 
     const stream =
       await navigator.mediaDevices
@@ -126,10 +162,13 @@ async function startSession() {
       "live"
     );
 
-
     startButton.textContent =
       "SESSION ACTIVE";
 
+
+    // --------------------------------------------------------
+    // Start CV loop
+    // --------------------------------------------------------
 
     requestAnimationFrame(
       detectionLoop
@@ -139,10 +178,20 @@ async function startSession() {
 
   catch (error) {
 
-    console.error(error);
+    console.error(
+      "Unable to initialize session:",
+      error
+    );
 
     statusElement.textContent =
       "ERROR";
+
+    statusElement.classList.remove(
+      "live"
+    );
+
+    cameraMessage.style.display =
+      "block";
 
     cameraMessage.textContent =
       "Unable to initialize camera";
@@ -155,6 +204,10 @@ async function startSession() {
   }
 }
 
+
+// ============================================================
+// DETECTION LOOP
+// ============================================================
 
 function detectionLoop() {
 
@@ -175,7 +228,9 @@ function detectionLoop() {
       );
 
 
-    drawHand(result);
+    processDetectionResult(
+      result
+    );
   }
 
 
@@ -185,7 +240,13 @@ function detectionLoop() {
 }
 
 
-function drawHand(result) {
+// ============================================================
+// PROCESS RESULT
+// ============================================================
+
+function processDetectionResult(
+  result
+) {
 
   resizeCanvas();
 
@@ -198,10 +259,17 @@ function drawHand(result) {
   );
 
 
-  if (
-    !result.landmarks ||
-    result.landmarks.length === 0
-  ) {
+  const hands =
+    getDetectedHands(
+      result
+    );
+
+
+  // ----------------------------------------------------------
+  // No hand
+  // ----------------------------------------------------------
+
+  if (hands.length === 0) {
 
     landmarkCount.textContent =
       "0";
@@ -209,72 +277,333 @@ function drawHand(result) {
     handStatus.textContent =
       "NOT DETECTED";
 
+
+    previousFeatureStates.Left =
+      null;
+
+    previousFeatureStates.Right =
+      null;
+
+
+    clearFeatureUI();
+
     return;
   }
 
 
-  const landmarks =
-    result.landmarks[0];
-
+  // ----------------------------------------------------------
+  // Basic tracking information
+  // ----------------------------------------------------------
 
   landmarkCount.textContent =
-    landmarks.length;
-
-  handStatus.textContent =
-    "DETECTED";
-
-const features =
-  extractHandFeatures(
-    landmarks,
-    previousFeatureState
-  );
+    String(
+      hands.length * 21
+    );
 
 
-previousFeatureState =
-  features.state;
+  if (hands.length === 2) {
+
+    handStatus.textContent =
+      "LEFT + RIGHT";
+
+  }
+
+  else {
+
+    handStatus.textContent =
+      hands[0].label.toUpperCase();
+  }
 
 
-updateFeatureUI(
-  features
-);
+  // ----------------------------------------------------------
+  // Determine which hands currently exist
+  // ----------------------------------------------------------
 
+  const visibleLabels =
+    new Set(
+      hands.map(
+        (hand) =>
+          hand.label
+      )
+    );
+
+
+  if (
+    !visibleLabels.has("Left")
+  ) {
+
+    previousFeatureStates.Left =
+      null;
+  }
+
+
+  if (
+    !visibleLabels.has("Right")
+  ) {
+
+    previousFeatureStates.Right =
+      null;
+  }
+
+
+  // ----------------------------------------------------------
+  // Process every detected hand independently
+  // ----------------------------------------------------------
+
+  const handData = [];
+
+
+  for (const hand of hands) {
+
+    const {
+      label,
+      landmarks,
+      confidence,
+    } = hand;
+
+
+    const previousState =
+      previousFeatureStates[label]
+      ?? null;
+
+
+    const features =
+      extractHandFeatures(
+        landmarks,
+        previousState
+      );
+
+
+    if (!features) {
+      continue;
+    }
+
+
+    previousFeatureStates[label] =
+      features.state;
+
+
+    drawHandSkeleton(
+      landmarks,
+      label
+    );
+
+
+    handData.push({
+      label,
+      confidence,
+      features,
+      landmarks,
+    });
+  }
+
+
+  // ----------------------------------------------------------
+  // TEMPORARY UI
+  //
+  // Current HTML still contains only one feature panel.
+  // Until we build the dual-hand interface, show one hand here.
+  //
+  // Priority:
+  // Left -> Right -> first detected hand
+  // ----------------------------------------------------------
+
+  const primaryHand =
+    handData.find(
+      (hand) =>
+        hand.label === "Left"
+    )
+    ??
+    handData.find(
+      (hand) =>
+        hand.label === "Right"
+    )
+    ??
+    handData[0];
+
+
+  if (primaryHand) {
+
+    updateFeatureUI(
+      primaryHand.features
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // Development access
+  //
+  // Makes current hand data available in DevTools:
+  //
+  // window.crossModalHands
+  //
+  // This will later be replaced by the Mapping Engine.
+  // ----------------------------------------------------------
+
+  window.crossModalHands =
+    handData.map(
+      ({
+        label,
+        confidence,
+        features,
+      }) => ({
+        label,
+        confidence,
+
+        x:
+          features.x,
+
+        y:
+          features.y,
+
+        pinch:
+          features.pinch,
+
+        openness:
+          features.openness,
+
+        speed:
+          features.speed,
+      })
+    );
+}
+
+
+// ============================================================
+// HAND RESULT PARSER
+// ============================================================
+
+function getDetectedHands(
+  result
+) {
+
+  const hands = [];
+
+
+  if (
+    !result.landmarks ||
+    result.landmarks.length === 0
+  ) {
+
+    return hands;
+  }
+
+
+  for (
+    let i = 0;
+    i < result.landmarks.length;
+    i++
+  ) {
+
+    const landmarks =
+      result.landmarks[i];
+
+
+    const handedness =
+      result.handedness?.[i]?.[0];
+
+
+    const detectedLabel =
+      handedness?.categoryName;
+
+
+    let label;
+
+
+    if (
+      detectedLabel === "Left" ||
+      detectedLabel === "Right"
+    ) {
+
+      label =
+        detectedLabel;
+
+    }
+
+    else {
+
+      label =
+        `Hand-${i + 1}`;
+    }
+
+
+    const confidence =
+      handedness?.score ?? 0;
+
+
+    hands.push({
+      label,
+      confidence,
+      landmarks,
+    });
+  }
+
+
+  return hands;
+}
+
+
+// ============================================================
+// DRAW HAND
+// ============================================================
+
+function drawHandSkeleton(
+  landmarks,
+  label
+) {
 
   const connections = [
 
+    // Thumb
     [0, 1],
     [1, 2],
     [2, 3],
     [3, 4],
 
+    // Index
     [0, 5],
     [5, 6],
     [6, 7],
     [7, 8],
 
+    // Middle
     [5, 9],
     [9, 10],
     [10, 11],
     [11, 12],
 
+    // Ring
     [9, 13],
     [13, 14],
     [14, 15],
     [15, 16],
 
+    // Pinky
     [13, 17],
     [17, 18],
     [18, 19],
     [19, 20],
 
+    // Palm
     [0, 17],
   ];
 
 
-  ctx.strokeStyle =
-    "#5F9FFF";
+  const handColor =
+    label === "Left"
+      ? "#5F9FFF"
+      : "#FF7746";
+
+
+  // ----------------------------------------------------------
+  // Connections
+  // ----------------------------------------------------------
 
   ctx.lineWidth =
     3;
+
+  ctx.strokeStyle =
+    handColor;
 
 
   for (
@@ -291,75 +620,93 @@ updateFeatureUI(
 
     ctx.beginPath();
 
+
     ctx.moveTo(
-      a.x * canvas.width,
-      a.y * canvas.height
+      a.x *
+        canvas.width,
+
+      a.y *
+        canvas.height
     );
 
+
     ctx.lineTo(
-      b.x * canvas.width,
-      b.y * canvas.height
+      b.x *
+        canvas.width,
+
+      b.y *
+        canvas.height
     );
+
 
     ctx.stroke();
   }
 
+
+  // ----------------------------------------------------------
+  // Landmarks
+  // ----------------------------------------------------------
 
   landmarks.forEach(
     (point, index) => {
 
       ctx.beginPath();
 
-      ctx.arc(
-        point.x * canvas.width,
-        point.y * canvas.height,
+
+      const isInteractionPoint =
         index === 4 ||
-        index === 8
+        index === 8;
+
+
+      ctx.arc(
+        point.x *
+          canvas.width,
+
+        point.y *
+          canvas.height,
+
+        isInteractionPoint
           ? 8
           : 5,
+
         0,
+
         Math.PI * 2
       );
 
 
+      // Thumb tip + index tip are highlighted
+      // because they form the pinch gesture.
+
       ctx.fillStyle =
-        index === 4 ||
-        index === 8
-          ? "#FF7746"
-          : "#FFFFFF";
+        isInteractionPoint
+          ? "#FFFFFF"
+          : handColor;
 
 
       ctx.fill();
+
+
+      // Small border around interaction points
+
+      if (isInteractionPoint) {
+
+        ctx.strokeStyle =
+          handColor;
+
+        ctx.lineWidth =
+          2;
+
+        ctx.stroke();
+      }
     }
   );
 }
 
 
-function resizeCanvas() {
-
-  if (
-    !video.videoWidth ||
-    !video.videoHeight
-  ) {
-    return;
-  }
-
-
-  if (
-    canvas.width !==
-      video.videoWidth ||
-    canvas.height !==
-      video.videoHeight
-  ) {
-
-    canvas.width =
-      video.videoWidth;
-
-    canvas.height =
-      video.videoHeight;
-  }
-}
-
+// ============================================================
+// CURRENT FEATURE UI
+// ============================================================
 
 function updateFeatureUI(
   features
@@ -371,11 +718,13 @@ function updateFeatureUI(
     features.x
   );
 
+
   updateFeature(
     yValue,
     yBar,
     features.y
   );
+
 
   updateFeature(
     pinchValue,
@@ -383,11 +732,13 @@ function updateFeatureUI(
     features.pinch
   );
 
+
   updateFeature(
     openValue,
     openBar,
     features.openness
   );
+
 
   updateFeature(
     speedValue,
@@ -397,16 +748,122 @@ function updateFeatureUI(
 }
 
 
-
 function updateFeature(
   valueElement,
   barElement,
   value
 ) {
 
+  if (
+    !valueElement ||
+    !barElement
+  ) {
+
+    return;
+  }
+
+
+  const safeValue =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        value
+      )
+    );
+
+
   valueElement.textContent =
-    value.toFixed(2);
+    safeValue.toFixed(2);
+
 
   barElement.style.width =
-    `${value * 100}%`;
+    `${safeValue * 100}%`;
+}
+
+
+function clearFeatureUI() {
+
+  const items = [
+
+    [
+      xValue,
+      xBar,
+    ],
+
+    [
+      yValue,
+      yBar,
+    ],
+
+    [
+      pinchValue,
+      pinchBar,
+    ],
+
+    [
+      openValue,
+      openBar,
+    ],
+
+    [
+      speedValue,
+      speedBar,
+    ],
+  ];
+
+
+  for (
+    const [
+      valueElement,
+      barElement,
+    ]
+    of items
+  ) {
+
+    if (valueElement) {
+
+      valueElement.textContent =
+        "—";
+    }
+
+
+    if (barElement) {
+
+      barElement.style.width =
+        "0%";
+    }
+  }
+}
+
+
+// ============================================================
+// CANVAS
+// ============================================================
+
+function resizeCanvas() {
+
+  if (
+    !video.videoWidth ||
+    !video.videoHeight
+  ) {
+
+    return;
+  }
+
+
+  if (
+    canvas.width !==
+      video.videoWidth ||
+
+    canvas.height !==
+      video.videoHeight
+  ) {
+
+    canvas.width =
+      video.videoWidth;
+
+    canvas.height =
+      video.videoHeight;
+  }
 }
