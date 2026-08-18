@@ -18,8 +18,20 @@ import {
 } from "./mapping/mappingUI.js";
 
 import {
+  createCompositionEngine,
+} from "./composition/compositionEngine.js";
+
+import {
+  createInstrumentRack,
+} from "./audio/instruments/instrumentRack.js";
+
+import {
   createMusicEngine,
 } from "./audio/musicEngine.js";
+
+import {
+  createMusicPerformanceUI,
+} from "./audio/musicUI.js";
 
 import {
   createVisualEngine,
@@ -29,40 +41,74 @@ import {
   createHapticEngine,
 } from "./haptics/hapticEngine.js";
 
+import {
+  createPitchOverlay,
+} from "./ui/pitchOverlay.js";
+
 
 // ============================================================
-// CORE DOM
+// DOM
 // ============================================================
 
 const video =
-  document.querySelector("#webcam");
+  document.querySelector(
+    "#webcam"
+  );
+
 
 const canvas =
-  document.querySelector("#overlay");
+  document.querySelector(
+    "#overlay"
+  );
+
 
 const ctx =
-  canvas.getContext("2d");
+  canvas.getContext(
+    "2d"
+  );
+
 
 const startButton =
-  document.querySelector("#startButton");
+  document.querySelector(
+    "#startButton"
+  );
+
 
 const statusElement =
-  document.querySelector("#status");
+  document.querySelector(
+    "#status"
+  );
+
 
 const cameraMessage =
-  document.querySelector("#cameraMessage");
+  document.querySelector(
+    "#cameraMessage"
+  );
+
 
 const landmarkCount =
-  document.querySelector("#landmarkCount");
+  document.querySelector(
+    "#landmarkCount"
+  );
+
 
 const handStatus =
-  document.querySelector("#handStatus");
+  document.querySelector(
+    "#handStatus"
+  );
+
 
 const mappingStudioContainer =
-  document.querySelector("#mappingStudio");
+  document.querySelector(
+    "#mappingStudio"
+  );
+
 
 const visualCanvas =
-  document.querySelector("#visualCanvas");
+  document.querySelector(
+    "#visualCanvas"
+  );
+
 
 const hapticOutputSection =
   document.querySelector(
@@ -71,7 +117,7 @@ const hapticOutputSection =
 
 
 // ============================================================
-// LEFT / RIGHT HAND UI
+// HAND UI
 // ============================================================
 
 const handUI = {
@@ -79,104 +125,153 @@ const handUI = {
   Left: {
 
     panel:
-      document.querySelector("#leftPanel"),
+      document.querySelector(
+        "#leftPanel"
+      ),
 
     presence:
-      document.querySelector("#leftPresence"),
+      document.querySelector(
+        "#leftPresence"
+      ),
 
     confidence:
-      document.querySelector("#leftConfidence"),
+      document.querySelector(
+        "#leftConfidence"
+      ),
 
     xValue:
-      document.querySelector("#leftXValue"),
+      document.querySelector(
+        "#leftXValue"
+      ),
 
     xBar:
-      document.querySelector("#leftXBar"),
+      document.querySelector(
+        "#leftXBar"
+      ),
 
     yValue:
-      document.querySelector("#leftYValue"),
+      document.querySelector(
+        "#leftYValue"
+      ),
 
     yBar:
-      document.querySelector("#leftYBar"),
+      document.querySelector(
+        "#leftYBar"
+      ),
 
     pinchValue:
-      document.querySelector("#leftPinchValue"),
+      document.querySelector(
+        "#leftPinchValue"
+      ),
 
     pinchBar:
-      document.querySelector("#leftPinchBar"),
+      document.querySelector(
+        "#leftPinchBar"
+      ),
 
     openValue:
-      document.querySelector("#leftOpenValue"),
+      document.querySelector(
+        "#leftOpenValue"
+      ),
 
     openBar:
-      document.querySelector("#leftOpenBar"),
+      document.querySelector(
+        "#leftOpenBar"
+      ),
 
     speedValue:
-      document.querySelector("#leftSpeedValue"),
+      document.querySelector(
+        "#leftSpeedValue"
+      ),
 
     speedBar:
-      document.querySelector("#leftSpeedBar"),
+      document.querySelector(
+        "#leftSpeedBar"
+      ),
   },
 
 
   Right: {
 
     panel:
-      document.querySelector("#rightPanel"),
+      document.querySelector(
+        "#rightPanel"
+      ),
 
     presence:
-      document.querySelector("#rightPresence"),
+      document.querySelector(
+        "#rightPresence"
+      ),
 
     confidence:
-      document.querySelector("#rightConfidence"),
+      document.querySelector(
+        "#rightConfidence"
+      ),
 
     xValue:
-      document.querySelector("#rightXValue"),
+      document.querySelector(
+        "#rightXValue"
+      ),
 
     xBar:
-      document.querySelector("#rightXBar"),
+      document.querySelector(
+        "#rightXBar"
+      ),
 
     yValue:
-      document.querySelector("#rightYValue"),
+      document.querySelector(
+        "#rightYValue"
+      ),
 
     yBar:
-      document.querySelector("#rightYBar"),
+      document.querySelector(
+        "#rightYBar"
+      ),
 
     pinchValue:
-      document.querySelector("#rightPinchValue"),
+      document.querySelector(
+        "#rightPinchValue"
+      ),
 
     pinchBar:
-      document.querySelector("#rightPinchBar"),
+      document.querySelector(
+        "#rightPinchBar"
+      ),
 
     openValue:
-      document.querySelector("#rightOpenValue"),
+      document.querySelector(
+        "#rightOpenValue"
+      ),
 
     openBar:
-      document.querySelector("#rightOpenBar"),
+      document.querySelector(
+        "#rightOpenBar"
+      ),
 
     speedValue:
-      document.querySelector("#rightSpeedValue"),
+      document.querySelector(
+        "#rightSpeedValue"
+      ),
 
     speedBar:
-      document.querySelector("#rightSpeedBar"),
+      document.querySelector(
+        "#rightSpeedBar"
+      ),
   },
 };
 
 
 // ============================================================
-// RUNTIME STATE
+// TRACKING STATE
 // ============================================================
 
 let handTracker =
   null;
 
+
 let previousVideoTime =
   -1;
 
-
-// ============================================================
-// RAW FEATURE HISTORY
-// ============================================================
 
 const previousFeatureStates = {
 
@@ -187,10 +282,6 @@ const previousFeatureStates = {
     null,
 };
 
-
-// ============================================================
-// SIGNAL PROCESSORS
-// ============================================================
 
 const signalProcessors = {
 
@@ -203,24 +294,60 @@ const signalProcessors = {
 
 
 // ============================================================
-// PERSONAL MAPPING ENGINE
+// CORE ENGINES
 // ============================================================
+
+// ------------------------------------------------------------
+// PERSONAL MAPPING
+// ------------------------------------------------------------
 
 const mappingEngine =
   createMappingEngine();
 
 
-// ============================================================
-// MUSIC ENGINE
-// ============================================================
+// ------------------------------------------------------------
+// COMPOSITION ASSIST
+// ------------------------------------------------------------
+
+const compositionEngine =
+  createCompositionEngine();
+
+
+// ------------------------------------------------------------
+// INSTRUMENT RACK
+//
+// REGISTER mode:
+//
+// LOW
+// C3–B3
+//
+// MID
+// C4–B4
+//
+// HIGH
+// C5–C6
+// ------------------------------------------------------------
+
+const instrumentRack =
+  createInstrumentRack();
+
+
+// ------------------------------------------------------------
+// MUSIC ENGINE V4
+// ------------------------------------------------------------
 
 const musicEngine =
-  createMusicEngine();
+  createMusicEngine({
+
+    compositionEngine,
+
+    instrumentRack,
+  });
 
 
-// ============================================================
-// VISUAL ENGINE
-// ============================================================
+// ------------------------------------------------------------
+// VISUAL
+// ------------------------------------------------------------
 
 const visualEngine =
   createVisualEngine(
@@ -228,14 +355,12 @@ const visualEngine =
   );
 
 
-// ============================================================
-// HAPTIC ENGINE
+// ------------------------------------------------------------
+// HAPTIC
 //
-// Important:
-// We pass the whole haptic output section rather than only
-// #hapticBodyMap because the status indicators live above
-// the body map.
-// ============================================================
+// Status elements are outside #hapticBodyMap,
+// therefore the full output section is used as root.
+// ------------------------------------------------------------
 
 const hapticEngine =
   createHapticEngine({
@@ -246,8 +371,12 @@ const hapticEngine =
 
 
 // ============================================================
-// PERSONAL MAPPING UI
+// UI
 // ============================================================
+
+// ------------------------------------------------------------
+// MAPPING STUDIO
+// ------------------------------------------------------------
 
 const mappingUI =
   createMappingStudioUI({
@@ -260,12 +389,75 @@ const mappingUI =
   });
 
 
+// ------------------------------------------------------------
+// MUSIC PERFORMANCE UI
+// ------------------------------------------------------------
+
+const musicUI =
+  createMusicPerformanceUI({
+
+    engine:
+      musicEngine,
+
+    compositionEngine,
+
+    instrumentRack,
+
+    afterElement:
+      mappingStudioContainer,
+  });
+
+
+// ------------------------------------------------------------
+// CAMERA PITCH OVERLAY
+//
+// Camera becomes part of the instrument.
+//
+// Hand height
+// ↓
+// Pitch position
+// ↓
+// Current Note + Register + Instrument
+// ------------------------------------------------------------
+
+const pitchOverlay =
+  createPitchOverlay({
+
+    videoElement:
+      video,
+  });
+
+
 // ============================================================
-// DEVELOPMENT / DEBUG API
+// DEBUG API
+//
+// Browser console:
+//
+// window.mappingStudio
+// window.compositionStudio
+// window.instrumentRack
+// window.musicStudio
+//
+// window.crossModalHands
+// window.crossModalMapping
+// window.crossModalAudio
+// window.crossModalHaptics
 // ============================================================
 
 window.mappingStudio =
   mappingEngine;
+
+
+window.compositionStudio =
+  compositionEngine;
+
+
+window.instrumentRack =
+  instrumentRack;
+
+
+window.musicStudio =
+  musicEngine;
 
 
 window.crossModalHands =
@@ -315,9 +507,7 @@ async function startSession() {
 
 
   // ==========================================================
-  // START AUDIO
-  //
-  // Tone.js must be initialized after direct user interaction.
+  // AUDIO
   // ==========================================================
 
   try {
@@ -327,6 +517,28 @@ async function startSession() {
 
     window.crossModalAudio =
       musicEngine.getState();
+
+
+    musicUI.update(
+      window.crossModalAudio
+    );
+
+
+    console.log(
+      "[CrossModalMusic] Audio initialized"
+    );
+
+
+    console.log(
+      "[CrossModalMusic] Instrument Rack",
+      instrumentRack.getState()
+    );
+
+
+    console.log(
+      "[CrossModalMusic] Audio State",
+      window.crossModalAudio
+    );
 
   }
 
@@ -340,7 +552,7 @@ async function startSession() {
 
 
   // ==========================================================
-  // START CAMERA + MEDIAPIPE
+  // CAMERA + MEDIAPIPE
   // ==========================================================
 
   try {
@@ -356,11 +568,13 @@ async function startSession() {
           video: {
 
             width: {
-              ideal: 1280,
+              ideal:
+                1280,
             },
 
             height: {
-              ideal: 720,
+              ideal:
+                720,
             },
           },
 
@@ -445,8 +659,10 @@ function detectionLoop() {
 
   if (
     handTracker &&
-    video.readyState >= 2 &&
-    video.currentTime !== previousVideoTime
+    video.readyState >=
+      2 &&
+    video.currentTime !==
+      previousVideoTime
   ) {
 
     previousVideoTime =
@@ -475,7 +691,7 @@ function detectionLoop() {
 
 
 // ============================================================
-// PROCESS MEDIAPIPE RESULT
+// PROCESS FRAME
 // ============================================================
 
 function processDetectionResult(
@@ -508,7 +724,8 @@ function processDetectionResult(
   // ==========================================================
 
   if (
-    hands.length === 0
+    hands.length ===
+    0
   ) {
 
     landmarkCount.textContent =
@@ -537,17 +754,31 @@ function processDetectionResult(
       null;
 
 
-    signalProcessors.Left.reset();
+    signalProcessors
+      .Left
+      .reset();
 
 
-    signalProcessors.Right.reset();
+    signalProcessors
+      .Right
+      .reset();
+
+
+    // --------------------------------------------------------
+    // Reset pitch stability.
+    //
+    // Harmony clock keeps moving.
+    // --------------------------------------------------------
+
+    compositionEngine
+      .resetPitch();
 
 
     window.crossModalHands =
       [];
 
 
-    const emptyMappingOutput =
+    const emptyOutput =
       [];
 
 
@@ -557,39 +788,48 @@ function processDetectionResult(
         mappingEngine.getProfile(),
 
       output:
-        emptyMappingOutput,
+        emptyOutput,
     };
 
 
-    // --------------------------------------------------------
-    // Reset mapping UI
-    // --------------------------------------------------------
-
     mappingUI.updateLiveValues(
-      emptyMappingOutput
+      emptyOutput
     );
 
 
     // --------------------------------------------------------
-    // Reset visual output
+    // Keep harmony / composition timeline alive.
+    // --------------------------------------------------------
+
+    musicEngine.process(
+      []
+    );
+
+
+    window.crossModalAudio =
+      musicEngine.getState();
+
+
+    musicUI.update(
+      window.crossModalAudio
+    );
+
+
+    // --------------------------------------------------------
+    // No hand → hide current camera pitch marker.
+    // --------------------------------------------------------
+
+    pitchOverlay.clear();
+
+
+    // --------------------------------------------------------
+    // Clear responsive outputs.
     // --------------------------------------------------------
 
     visualEngine.clear();
 
 
-    // --------------------------------------------------------
-    // Reset virtual haptic output
-    // --------------------------------------------------------
-
     hapticEngine.clear();
-
-
-    // --------------------------------------------------------
-    // Debug state
-    // --------------------------------------------------------
-
-    window.crossModalAudio =
-      musicEngine.getState();
 
 
     window.crossModalHaptics =
@@ -601,7 +841,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // GLOBAL TRACKING INFO
+  // TRACKING STATUS
   // ==========================================================
 
   landmarkCount.textContent =
@@ -633,8 +873,12 @@ function processDetectionResult(
 
 
   if (
-    visibleHands.has("Left") &&
-    visibleHands.has("Right")
+    visibleHands.has(
+      "Left"
+    ) &&
+    visibleHands.has(
+      "Right"
+    )
   ) {
 
     handStatus.textContent =
@@ -643,7 +887,9 @@ function processDetectionResult(
   }
 
   else if (
-    visibleHands.has("Left")
+    visibleHands.has(
+      "Left"
+    )
   ) {
 
     handStatus.textContent =
@@ -652,7 +898,9 @@ function processDetectionResult(
   }
 
   else if (
-    visibleHands.has("Right")
+    visibleHands.has(
+      "Right"
+    )
   ) {
 
     handStatus.textContent =
@@ -668,7 +916,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // RESET HANDS THAT DISAPPEARED
+  // LOST HAND RESET
   // ==========================================================
 
   for (
@@ -704,7 +952,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // CURRENT NORMALIZED INPUT DATA
+  // BUILD NORMALIZED HAND INPUT
   // ==========================================================
 
   const currentData =
@@ -717,19 +965,16 @@ function processDetectionResult(
   ) {
 
     const {
-
       label,
-
       confidence,
-
       landmarks,
+    } =
+      hand;
 
-    } = hand;
 
-
-    // --------------------------------------------------------
-    // 1. RAW FEATURE EXTRACTION
-    // --------------------------------------------------------
+    // ========================================================
+    // FEATURE EXTRACTION
+    // ========================================================
 
     const rawFeatures =
       extractHandFeatures(
@@ -738,7 +983,8 @@ function processDetectionResult(
 
         previousFeatureStates[
           label
-        ] ?? null
+        ] ??
+        null
       );
 
 
@@ -756,9 +1002,9 @@ function processDetectionResult(
       rawFeatures.state;
 
 
-    // --------------------------------------------------------
-    // 2. SIGNAL PROCESSING
-    // --------------------------------------------------------
+    // ========================================================
+    // SIGNAL PROCESSING
+    // ========================================================
 
     const processor =
       signalProcessors[
@@ -788,9 +1034,9 @@ function processDetectionResult(
     }
 
 
-    // --------------------------------------------------------
-    // 3. DRAW CV SKELETON
-    // --------------------------------------------------------
+    // ========================================================
+    // CAMERA SKELETON
+    // ========================================================
 
     drawHandSkeleton(
       landmarks,
@@ -798,13 +1044,15 @@ function processDetectionResult(
     );
 
 
-    // --------------------------------------------------------
-    // 4. UPDATE TECHNICAL DATA UI
-    // --------------------------------------------------------
+    // ========================================================
+    // TECHNICAL HAND UI
+    // ========================================================
 
     if (
-      label === "Left" ||
-      label === "Right"
+      label ===
+        "Left" ||
+      label ===
+        "Right"
     ) {
 
       updateHandPanel(
@@ -818,18 +1066,15 @@ function processDetectionResult(
     }
 
 
-    // --------------------------------------------------------
-    // 5. NORMALIZED CROSS-MODAL INPUT
-    // --------------------------------------------------------
+    // ========================================================
+    // NORMALIZED HAND DATA
+    // ========================================================
 
     currentData.push({
 
       label,
 
       confidence,
-
-
-      // Continuous signals
 
       x:
         features.x,
@@ -846,9 +1091,6 @@ function processDetectionResult(
       speed:
         features.speed,
 
-
-      // Gesture state / events
-
       pinchActive:
         features.pinchActive,
 
@@ -862,7 +1104,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // CV OUTPUT
+  // INPUT DEBUG
   // ==========================================================
 
   window.crossModalHands =
@@ -870,13 +1112,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // PERSONAL MAPPING ENGINE
-  //
-  // Gesture signals
-  //       ↓
-  // User-defined semantic mappings
-  //       ↓
-  // Music + Visual + Haptic
+  // PERSONAL MAPPING
   // ==========================================================
 
   const mappingOutput =
@@ -895,21 +1131,50 @@ function processDetectionResult(
   };
 
 
-  // ==========================================================
-  // MAPPING STUDIO UI
-  // ==========================================================
-
   mappingUI.updateLiveValues(
     mappingOutput
   );
 
 
   // ==========================================================
-  // MUSIC OUTPUT
+  // MUSIC PIPELINE
+  //
+  // Gesture
+  // ↓
+  // Mapping
+  // ↓
+  // Composition Assist
+  // ↓
+  // Pitch / Harmony / Rhythm
+  // ↓
+  // Instrument Rack
+  // ↓
+  // Sample Player
   // ==========================================================
 
   musicEngine.process(
     mappingOutput
+  );
+
+
+  window.crossModalAudio =
+    musicEngine.getState();
+
+
+  musicUI.update(
+    window.crossModalAudio
+  );
+
+
+  // ==========================================================
+  // CAMERA PITCH OVERLAY
+  //
+  // LEFT Y position and current resolved musical state
+  // are visually connected inside the camera.
+  // ==========================================================
+
+  pitchOverlay.update(
+    window.crossModalAudio
   );
 
 
@@ -931,21 +1196,13 @@ function processDetectionResult(
   );
 
 
-  // ==========================================================
-  // DEBUG STATE
-  // ==========================================================
-
-  window.crossModalAudio =
-    musicEngine.getState();
-
-
   window.crossModalHaptics =
     hapticEngine.getState();
 }
 
 
 // ============================================================
-// PARSE MEDIAPIPE RESULT
+// MEDIAPIPE HAND PARSING
 // ============================================================
 
 function getDetectedHands(
@@ -958,7 +1215,8 @@ function getDetectedHands(
 
   if (
     !result.landmarks ||
-    result.landmarks.length === 0
+    result.landmarks.length ===
+      0
   ) {
 
     return hands;
@@ -967,7 +1225,8 @@ function getDetectedHands(
 
   for (
     let i = 0;
-    i < result.landmarks.length;
+    i <
+    result.landmarks.length;
     i++
   ) {
 
@@ -990,8 +1249,10 @@ function getDetectedHands(
 
     const label =
 
-      detectedLabel === "Left" ||
-      detectedLabel === "Right"
+      detectedLabel ===
+        "Left" ||
+      detectedLabel ===
+        "Right"
 
         ? detectedLabel
 
@@ -1000,7 +1261,8 @@ function getDetectedHands(
 
     const confidence =
       handedness
-        ?.score ?? 0;
+        ?.score ??
+      0;
 
 
     hands.push({
@@ -1019,7 +1281,7 @@ function getDetectedHands(
 
 
 // ============================================================
-// UPDATE ONE HAND PANEL
+// UPDATE HAND PANEL
 // ============================================================
 
 function updateHandPanel(
@@ -1042,11 +1304,9 @@ function updateHandPanel(
   }
 
 
-  ui.panel
-    .classList
-    .add(
-      "detected"
-    );
+  ui.panel.classList.add(
+    "detected"
+  );
 
 
   ui.presence.textContent =
@@ -1055,89 +1315,57 @@ function updateHandPanel(
 
   ui.confidence.textContent =
     `${Math.round(
-      confidence * 100
+      confidence *
+      100
     )}%`;
 
 
   setMetric(
-
     ui.xValue,
-
     ui.xBar,
-
     features.x
   );
 
 
   setMetric(
-
     ui.yValue,
-
     ui.yBar,
-
     features.y
   );
 
 
   setMetric(
-
     ui.pinchValue,
-
     ui.pinchBar,
-
     features.pinch
   );
 
 
   setMetric(
-
     ui.openValue,
-
     ui.openBar,
-
     features.openness
   );
 
 
   setMetric(
-
     ui.speedValue,
-
     ui.speedBar,
-
     features.speed
   );
 
 
-  // ==========================================================
-  // PINCH STATE
-  // ==========================================================
+  ui.panel.classList.toggle(
 
-  if (
+    "pinching",
+
     features.pinchActive
-  ) {
-
-    ui.panel
-      .classList
-      .add(
-        "pinching"
-      );
-
-  }
-
-  else {
-
-    ui.panel
-      .classList
-      .remove(
-        "pinching"
-      );
-  }
+  );
 }
 
 
 // ============================================================
-// CLEAR ONE HAND PANEL
+// CLEAR HAND PANEL
 // ============================================================
 
 function clearHandPanel(
@@ -1158,18 +1386,10 @@ function clearHandPanel(
   }
 
 
-  ui.panel
-    .classList
-    .remove(
-      "detected"
-    );
-
-
-  ui.panel
-    .classList
-    .remove(
-      "pinching"
-    );
+  ui.panel.classList.remove(
+    "detected",
+    "pinching"
+  );
 
 
   ui.presence.textContent =
@@ -1228,7 +1448,7 @@ function clearHandPanel(
 
 
 // ============================================================
-// FEATURE BAR
+// SET METRIC
 // ============================================================
 
 function setMetric(
@@ -1256,7 +1476,10 @@ function setMetric(
 
 
   barElement.style.width =
-    `${normalized * 100}%`;
+    `${
+      normalized *
+      100
+    }%`;
 }
 
 
@@ -1271,53 +1494,44 @@ function drawHandSkeleton(
 
   const connections = [
 
-    // Thumb
     [0, 1],
     [1, 2],
     [2, 3],
     [3, 4],
 
-    // Index
     [0, 5],
     [5, 6],
     [6, 7],
     [7, 8],
 
-    // Middle
     [5, 9],
     [9, 10],
     [10, 11],
     [11, 12],
 
-    // Ring
     [9, 13],
     [13, 14],
     [14, 15],
     [15, 16],
 
-    // Pinky
     [13, 17],
     [17, 18],
     [18, 19],
     [19, 20],
 
-    // Palm
     [0, 17],
   ];
 
 
   const color =
 
-    label === "Left"
+    label ===
+    "Left"
 
       ? "#5F9FFF"
 
       : "#FF7746";
 
-
-  // ==========================================================
-  // SKELETON LINES
-  // ==========================================================
 
   ctx.strokeStyle =
     color;
@@ -1374,12 +1588,7 @@ function drawHandSkeleton(
   }
 
 
-  // ==========================================================
-  // LANDMARK POINTS
-  // ==========================================================
-
   landmarks.forEach(
-
     (
       point,
       index
@@ -1387,8 +1596,10 @@ function drawHandSkeleton(
 
       const interactionPoint =
 
-        index === 4 ||
-        index === 8;
+        index ===
+          4 ||
+        index ===
+          8;
 
 
       ctx.beginPath();
@@ -1408,7 +1619,8 @@ function drawHandSkeleton(
 
         0,
 
-        Math.PI * 2
+        Math.PI *
+          2
       );
 
 
@@ -1444,7 +1656,7 @@ function drawHandSkeleton(
 
 
 // ============================================================
-// CAMERA CANVAS RESIZE
+// RESIZE CAMERA OVERLAY
 // ============================================================
 
 function resizeCanvas() {
@@ -1461,7 +1673,6 @@ function resizeCanvas() {
   if (
     canvas.width !==
       video.videoWidth ||
-
     canvas.height !==
       video.videoHeight
   ) {

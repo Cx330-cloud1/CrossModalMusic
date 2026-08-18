@@ -1,31 +1,37 @@
 import * as Tone from "tone";
 
+import {
+  createSamplePlayer,
+} from "./instruments/samplePlayer.js";
+
 
 // ============================================================
-// MUSIC ENGINE V2
+// MUSIC ENGINE V4
 //
-// Gesture
-//   ↓
-// Personal Mapping
-//   ↓
-// 3-octave scale system
-//   ↓
-// Guided / Performance interaction
-//   ↓
-// Mallet + Ambient Pad
+// Composition Assist
+//        ↓
+// Instrument Rack
+//        ↓
+// Sample Player
+//        ↓
+// Instrument FX
+//        ↓
+// Shared Reverb
+//
+// Preview + Formal playback now share the same instrument.
 // ============================================================
+
 
 const SETTINGS_KEY =
-  "cross-modal-music-settings-v2";
+  "cross-modal-music-settings-v4";
 
 
-// MIDI range:
-//
-// C3 = 48
-// C6 = 84
+const MIDI_MIN =
+  48; // C3
 
-const MIDI_MIN = 48;
-const MIDI_MAX = 84;
+
+const MIDI_MAX =
+  84; // C6
 
 
 const SCALE_INTERVALS = {
@@ -105,7 +111,30 @@ const NOTE_NAMES = [
 // FACTORY
 // ============================================================
 
-export function createMusicEngine() {
+export function createMusicEngine({
+  compositionEngine,
+  instrumentRack,
+}) {
+
+  if (
+    !compositionEngine
+  ) {
+
+    throw new Error(
+      "Music Engine V4 requires Composition Engine."
+    );
+  }
+
+
+  if (
+    !instrumentRack
+  ) {
+
+    throw new Error(
+      "Music Engine V4 requires Instrument Rack."
+    );
+  }
+
 
   const settings =
     loadSettings();
@@ -122,33 +151,35 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // AUDIO NODES
+  // AUDIO
   // ==========================================================
 
   let master =
     null;
 
+
   let reverb =
     null;
 
-  let mallet =
+
+  let instrumentFilter =
     null;
 
-  let malletFilter =
+
+  let samplePlayer =
     null;
 
-  let previewSynth =
-    null;
 
   let pad =
     null;
+
 
   let padFilter =
     null;
 
 
   // ==========================================================
-  // PERFORMANCE STATE
+  // STATE
   // ==========================================================
 
   const state = {
@@ -162,11 +193,20 @@ export function createMusicEngine() {
     pitchValue:
       0.5,
 
+    originalNote:
+      "",
+
     note:
       "",
 
-    scaleIndex:
-      0,
+    noteRole:
+      "color",
+
+    noteRoleLabel:
+      "COLOR",
+
+    assistChanged:
+      false,
 
     timbre:
       0.5,
@@ -174,29 +214,51 @@ export function createMusicEngine() {
     intensity:
       0.35,
 
-    padAmount:
-      0.35,
-
-    texture:
+    expression:
       0.35,
 
     volume:
       0.72,
 
-    rhythm:
-      0,
-
     lastVelocity:
       0.5,
+
+    harmony:
+      null,
+
+    // --------------------------------------------------------
+    // INSTRUMENT ROUTING
+    // --------------------------------------------------------
+
+    instrumentId:
+      "kalimba",
+
+    instrumentLabel:
+      "Kalimba",
+
+    instrumentFamily:
+      "Plucked",
+
+    instrumentSource:
+      "synth-fallback",
+
+    zoneId:
+      "mid",
+
+    zoneLabel:
+      "MID",
+
+    rackMode:
+      "register",
   };
 
 
+  // ==========================================================
+  // EVENT STATE
+  // ==========================================================
+
   const previousRuleValues =
     new Map();
-
-
-  let lastFormalNoteTime =
-    0;
 
 
   let lastPreviewTime =
@@ -207,8 +269,16 @@ export function createMusicEngine() {
     null;
 
 
-  let lastPadTime =
+  let suppressPreviewUntil =
     0;
+
+
+  let lastScheduledNoteTime =
+    -Infinity;
+
+
+  let lastHarmonyAbsoluteBar =
+    null;
 
 
   updatePitch(
@@ -237,20 +307,39 @@ export function createMusicEngine() {
     setupAudioGraph();
 
 
-    if (
-      reverb?.ready
-    ) {
+    samplePlayer =
+      createSamplePlayer({
 
-      await reverb.ready;
-    }
+        destination:
+          instrumentFilter,
+      });
+
+
+    await samplePlayer
+      .initialize();
+
+
+    compositionEngine
+      .startClock();
+
+
+    lastHarmonyAbsoluteBar =
+      null;
 
 
     initialized =
       true;
 
 
+    updateInstrumentRouting();
+
+
+    exposeState();
+
+
     console.log(
-      "[Music Engine V2] Audio ready"
+      "[Music Engine V4] Audio ready",
+      getState()
     );
   }
 
@@ -261,29 +350,23 @@ export function createMusicEngine() {
 
   function setupAudioGraph() {
 
-    // --------------------------------------------------------
-    // MASTER
-    // --------------------------------------------------------
-
     master =
       new Tone.Gain(
-        0.7
-      )
-        .toDestination();
+        0.72
+      );
 
 
-    // --------------------------------------------------------
-    // SPACE
-    // --------------------------------------------------------
+    master.toDestination();
+
 
     reverb =
       new Tone.Reverb(
-        2.8
+        2.9
       );
 
 
     reverb.wet.value =
-      0.24;
+      0.20;
 
 
     reverb.connect(
@@ -292,153 +375,46 @@ export function createMusicEngine() {
 
 
     // --------------------------------------------------------
-    // MALLET FILTER
+    // ALL INSTRUMENTS
+    //
+    // Left X still works as global timbre.
     // --------------------------------------------------------
 
-    malletFilter =
-      new Tone.Filter(
-        3200,
-        "lowpass"
-      );
+    instrumentFilter =
+      new Tone.Filter({
+
+        type:
+          "lowpass",
+
+        frequency:
+          4200,
+
+        rolloff:
+          -12,
+      });
 
 
-    malletFilter.connect(
+    instrumentFilter.connect(
       reverb
     );
 
 
     // --------------------------------------------------------
-    // MAIN MALLET
-    // --------------------------------------------------------
-
-    mallet =
-      new Tone.FMSynth({
-
-        harmonicity:
-          3.01,
-
-        modulationIndex:
-          7,
-
-        oscillator: {
-          type:
-            "sine",
-        },
-
-        envelope: {
-
-          attack:
-            0.002,
-
-          decay:
-            0.32,
-
-          sustain:
-            0.035,
-
-          release:
-            0.8,
-        },
-
-        modulation: {
-          type:
-            "sine",
-        },
-
-        modulationEnvelope: {
-
-          attack:
-            0.001,
-
-          decay:
-            0.23,
-
-          sustain:
-            0,
-
-          release:
-            0.3,
-        },
-
-        volume:
-          -8,
-      });
-
-
-    mallet.connect(
-      malletFilter
-    );
-
-
-    // --------------------------------------------------------
-    // GUIDED PREVIEW VOICE
-    //
-    // Much quieter than formal performance notes.
-    // --------------------------------------------------------
-
-    previewSynth =
-      new Tone.FMSynth({
-
-        harmonicity:
-          2,
-
-        modulationIndex:
-          2.5,
-
-        oscillator: {
-          type:
-            "sine",
-        },
-
-        envelope: {
-
-          attack:
-            0.001,
-
-          decay:
-            0.08,
-
-          sustain:
-            0,
-
-          release:
-            0.15,
-        },
-
-        modulationEnvelope: {
-
-          attack:
-            0.001,
-
-          decay:
-            0.05,
-
-          sustain:
-            0,
-
-          release:
-            0.1,
-        },
-
-        volume:
-          -21,
-      });
-
-
-    previewSynth.connect(
-      malletFilter
-    );
-
-
-    // --------------------------------------------------------
-    // AMBIENT PAD
+    // HARMONIC PAD
     // --------------------------------------------------------
 
     padFilter =
-      new Tone.Filter(
-        1500,
-        "lowpass"
-      );
+      new Tone.Filter({
+
+        type:
+          "lowpass",
+
+        frequency:
+          1450,
+
+        rolloff:
+          -12,
+      });
 
 
     padFilter.connect(
@@ -462,16 +438,16 @@ export function createMusicEngine() {
       envelope: {
 
         attack:
-          0.75,
+          0.78,
 
         decay:
-          0.85,
+          0.8,
 
         sustain:
-          0.25,
+          0.38,
 
         release:
-          2.5,
+          2.1,
       },
     });
 
@@ -487,7 +463,7 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // PROCESS MAPPING
+  // PROCESS
   // ==========================================================
 
   function process(
@@ -504,10 +480,11 @@ export function createMusicEngine() {
     }
 
 
+    updateHarmonyContext();
+
+
     // ========================================================
-    // PASS 1
-    //
-    // Continuous musical controls.
+    // CONTINUOUS CONTROLS
     // ========================================================
 
     for (
@@ -568,22 +545,11 @@ export function createMusicEngine() {
           break;
 
 
-        // Existing Mapping UI calls this "texture".
-        //
-        // In V2 it controls the Ambient Pad amount.
-
         case "texture":
 
-          updatePadAmount(
-            value
-          );
+        case "expression":
 
-          break;
-
-
-        case "pad-amount":
-
-          updatePadAmount(
+          updateExpression(
             value
           );
 
@@ -597,22 +563,12 @@ export function createMusicEngine() {
           );
 
           break;
-
-
-        case "rhythm":
-
-          state.rhythm =
-            value;
-
-          break;
       }
     }
 
 
     // ========================================================
-    // PASS 2
-    //
-    // Discrete note triggers.
+    // EVENT CONTROLS
     // ========================================================
 
     for (
@@ -660,63 +616,162 @@ export function createMusicEngine() {
       );
 
 
+    const stableIndex =
+      compositionEngine
+        .stabilizePitch(
+
+          state.pitchValue,
+
+          scaleNotes.length
+        );
+
+
     const index =
-      Math.round(
-
-        state.pitchValue *
-
-        (
-          scaleNotes.length -
-          1
-        )
-      );
-
-
-    const nextIndex =
       Math.max(
 
         0,
 
         Math.min(
-          scaleNotes.length - 1,
-          index
+
+          scaleNotes.length -
+          1,
+
+          stableIndex
         )
       );
 
 
-    const nextNote =
+    const originalNote =
       scaleNotes[
-        nextIndex
+        index
       ];
 
 
-    const noteChanged =
-      nextNote !==
+    const assisted =
+      compositionEngine
+        .assistPitch({
+
+          note:
+            originalNote,
+
+          scaleNotes,
+
+          scaleName:
+            getTonalContextName(
+              state.scale
+            ),
+        });
+
+
+    const previousNote =
       state.note;
 
 
-    state.scaleIndex =
-      nextIndex;
+    state.originalNote =
+      originalNote;
 
 
     state.note =
-      nextNote;
+      assisted.note;
+
+
+    state.noteRole =
+      assisted.role;
+
+
+    state.noteRoleLabel =
+      assisted.label;
+
+
+    state.assistChanged =
+      assisted.changed;
+
+
+    updateInstrumentRouting();
+
+
+    const changed =
+      previousNote !==
+      state.note;
 
 
     if (
-      noteChanged &&
+      changed &&
       allowPreview
     ) {
 
       maybePreviewNote(
-        nextNote
+        state.note
       );
     }
   }
 
 
   // ==========================================================
-  // GUIDED PREVIEW
+  // INSTRUMENT ROUTING
+  // ==========================================================
+
+  function updateInstrumentRouting() {
+
+    if (
+      !state.note
+    ) {
+
+      return;
+    }
+
+
+    const route =
+      instrumentRack
+        .routeNote(
+          state.note
+        );
+
+
+    state.instrumentId =
+      route.instrument.id;
+
+
+    state.instrumentLabel =
+      route.instrument.label;
+
+
+    state.instrumentFamily =
+      route.instrument.family;
+
+
+    state.zoneId =
+      route.zone.id;
+
+
+    state.zoneLabel =
+      route.zone.label;
+
+
+    state.rackMode =
+      route.mode;
+
+
+    if (
+      samplePlayer
+    ) {
+
+      const voice =
+        samplePlayer.getVoice(
+          route.instrument.id
+        );
+
+
+      state.instrumentSource =
+        voice?.sourceType ??
+        route.instrument
+          .sourceType;
+    }
+  }
+
+
+  // ==========================================================
+  // PREVIEW
   // ==========================================================
 
   function maybePreviewNote(
@@ -726,7 +781,8 @@ export function createMusicEngine() {
     if (
       !initialized ||
       state.mode !==
-        "guided"
+        "guided" ||
+      !samplePlayer
     ) {
 
       return;
@@ -738,9 +794,18 @@ export function createMusicEngine() {
 
 
     if (
+      now <
+      suppressPreviewUntil
+    ) {
+
+      return;
+    }
+
+
+    if (
       now -
       lastPreviewTime <
-      85
+      110
     ) {
 
       return;
@@ -756,6 +821,13 @@ export function createMusicEngine() {
     }
 
 
+    const route =
+      instrumentRack
+        .routeNote(
+          note
+        );
+
+
     lastPreviewTime =
       now;
 
@@ -764,17 +836,20 @@ export function createMusicEngine() {
       note;
 
 
-    previewSynth
-      ?.triggerAttackRelease(
+    samplePlayer
+      .playPreview({
 
         note,
 
-        "32n",
+        instrumentId:
+          route.instrument.id,
 
-        undefined,
+        velocity:
+          0.11,
 
-        0.18
-      );
+        duration:
+          0.075,
+      });
   }
 
 
@@ -787,42 +862,30 @@ export function createMusicEngine() {
   ) {
 
     state.timbre =
-      value;
-
-
-    // Dark → Bright
-
-    const malletCutoff =
-      850 +
-      value *
-      6100;
-
-
-    malletFilter
-      ?.frequency
-      .rampTo(
-        malletCutoff,
-        0.08
+      clamp01(
+        value
       );
 
 
-    const ambientCutoff =
-      650 +
-      value *
-      2800;
+    const cutoff =
+      1100 +
+      state.timbre *
+      6500;
 
 
-    padFilter
+    instrumentFilter
       ?.frequency
       .rampTo(
-        ambientCutoff,
-        0.14
+
+        cutoff,
+
+        0.08
       );
   }
 
 
   // ==========================================================
-  // EXPRESSIVE INTENSITY
+  // INTENSITY
   // ==========================================================
 
   function updateIntensity(
@@ -837,58 +900,68 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // AMBIENT PAD AMOUNT
+  // EXPRESSION
   // ==========================================================
 
-  function updatePadAmount(
+  function updateExpression(
     value
   ) {
 
-    state.padAmount =
+    state.expression =
       clamp01(
         value
       );
 
 
-    state.texture =
-      state.padAmount;
+    samplePlayer
+      ?.setExpression(
+        state.expression
+      );
+
+
+    padFilter
+      ?.frequency
+      .rampTo(
+
+        900 +
+        state.expression *
+        2300,
+
+        0.16
+      );
 
 
     if (
       pad
     ) {
 
-      const padDb =
-        -30 +
-        state.padAmount *
-        17;
+      pad.volume
+        .rampTo(
 
+          -26 +
+          state.expression *
+          9,
 
-      pad.volume.rampTo(
-        padDb,
-        0.18
-      );
+          0.18
+        );
     }
 
 
-    if (
-      reverb
-    ) {
+    reverb
+      ?.wet
+      .rampTo(
 
-      reverb.wet.rampTo(
-
-        0.14 +
-        state.padAmount *
+        0.12 +
+        state.expression *
         0.28,
 
-        0.2
+        0.18
       );
-    }
   }
 
 
   // ==========================================================
-  // MASTER VOLUME
+  // VOLUME
   // ==========================================================
 
   function updateVolume(
@@ -896,7 +969,9 @@ export function createMusicEngine() {
   ) {
 
     state.volume =
-      value;
+      clamp01(
+        value
+      );
 
 
     master
@@ -904,8 +979,8 @@ export function createMusicEngine() {
       .rampTo(
 
         0.12 +
-        value *
-        0.72,
+        state.volume *
+        0.74,
 
         0.12
       );
@@ -929,36 +1004,205 @@ export function createMusicEngine() {
 
 
     const previous =
-      previousRuleValues.get(
-        output.ruleId
-      ) ?? 0;
+      previousRuleValues
+        .get(
+          output.ruleId
+        ) ?? 0;
 
 
     const triggered =
+
       value >= 0.5 &&
       previous < 0.5;
 
 
-    previousRuleValues.set(
-      output.ruleId,
-      value
-    );
+    previousRuleValues
+      .set(
+        output.ruleId,
+        value
+      );
 
 
     if (
-      triggered
+      !triggered
     ) {
 
-      triggerCurrentNote();
+      return;
+    }
+
+
+    const now =
+      performance.now();
+
+
+    suppressPreviewUntil =
+      now +
+      420;
+
+
+    const delay =
+      compositionEngine
+        .getQuantizedDelay(
+          now
+        );
+
+
+    scheduleFormalNote(
+      delay
+    );
+  }
+
+
+  // ==========================================================
+  // FORMAL NOTE
+  // ==========================================================
+
+  function scheduleFormalNote(
+    delayMs
+  ) {
+
+    if (
+      !initialized ||
+      !samplePlayer
+    ) {
+
+      return;
+    }
+
+
+    const targetTime =
+      performance.now() +
+      delayMs;
+
+
+    if (
+      Math.abs(
+        targetTime -
+        lastScheduledNoteTime
+      ) <
+      55
+    ) {
+
+      return;
+    }
+
+
+    lastScheduledNoteTime =
+      targetTime;
+
+
+    // --------------------------------------------------------
+    // Snapshot current intention.
+    // --------------------------------------------------------
+
+    const note =
+      state.note;
+
+
+    const route =
+      instrumentRack
+        .routeNote(
+          note
+        );
+
+
+    const velocity =
+      0.28 +
+      state.intensity *
+      0.68;
+
+
+    state.lastVelocity =
+      velocity;
+
+
+    const audioTime =
+      Tone.now() +
+      delayMs /
+      1000;
+
+
+    samplePlayer
+      .playNote({
+
+        note,
+
+        instrumentId:
+          route.instrument.id,
+
+        velocity,
+
+        duration:
+          getNoteDuration(
+            route.instrument.id
+          ),
+
+        time:
+          audioTime,
+      });
+  }
+
+
+  // ==========================================================
+  // NOTE DURATION
+  // ==========================================================
+
+  function getNoteDuration(
+    instrumentId
+  ) {
+
+    switch (
+      instrumentId
+    ) {
+
+      case "glassBell":
+
+        return 0.62;
+
+
+      case "warmSynth":
+
+        return 0.72;
+
+
+      case "softPiano":
+
+        return 0.46;
+
+
+      case "marimba":
+
+        return 0.32;
+
+
+      case "mutedPluck":
+
+        return 0.20;
+
+
+      case "kalimba":
+
+      default:
+
+        return 0.34;
     }
   }
 
 
   // ==========================================================
-  // FORMAL PERFORMANCE NOTE
+  // HARMONY
   // ==========================================================
 
-  function triggerCurrentNote() {
+  function updateHarmonyContext() {
+
+    const harmony =
+      compositionEngine
+        .getHarmony();
+
+
+    state.harmony =
+      harmony;
+
 
     if (
       !initialized
@@ -968,183 +1212,63 @@ export function createMusicEngine() {
     }
 
 
-    const now =
-      performance.now();
-
-
     if (
-      now -
-      lastFormalNoteTime <
-      105
+      harmony.absoluteBar ===
+      lastHarmonyAbsoluteBar
     ) {
 
       return;
     }
 
 
-    lastFormalNoteTime =
-      now;
+    lastHarmonyAbsoluteBar =
+      harmony.absoluteBar;
 
 
-    // --------------------------------------------------------
-    // Expressive velocity
-    //
-    // Movement energy changes how hard the virtual
-    // instrument is struck.
-    // --------------------------------------------------------
-
-    const velocity =
-      0.26 +
-      state.intensity *
-      0.68;
+    const compositionState =
+      compositionEngine
+        .getState();
 
 
-    state.lastVelocity =
-      velocity;
+    const beatSeconds =
+      60 /
+      compositionState.tempo;
 
 
-    mallet
-      ?.triggerAttackRelease(
-
-        state.note,
-
-        "8n",
-
-        undefined,
-
-        velocity
-      );
-
-
-    triggerPad();
-  }
-
-
-  // ==========================================================
-  // AMBIENT PAD
-  // ==========================================================
-
-  function triggerPad() {
-
-    if (
-      state.padAmount <
-      0.06
-    ) {
-
-      return;
-    }
-
-
-    const now =
-      performance.now();
-
-
-    if (
-      now -
-      lastPadTime <
-      360
-    ) {
-
-      return;
-    }
-
-
-    lastPadTime =
-      now;
-
-
-    const chord =
-      buildPadChord();
+    const barDuration =
+      beatSeconds *
+      4 *
+      0.96;
 
 
     const velocity =
-      Math.min(
+      0.055 +
+      state.expression *
+      0.075;
 
-        0.36,
 
-        0.05 +
-        state.padAmount *
-        0.2 +
-        state.intensity *
-        0.08
+    const startTime =
+      Tone.now() +
+      0.015;
+
+
+    pad
+      ?.releaseAll(
+        startTime
       );
 
 
     pad
       ?.triggerAttackRelease(
 
-        chord,
+        harmony.padNotes,
 
-        "2n",
+        barDuration,
 
-        undefined,
+        startTime,
 
         velocity
       );
-  }
-
-
-  // ==========================================================
-  // PAD CHORD FROM CURRENT SCALE
-  // ==========================================================
-
-  function buildPadChord() {
-
-    const current =
-      state.scaleIndex;
-
-
-    const noteIndexes = [
-
-      current,
-
-      Math.min(
-        scaleNotes.length - 1,
-        current + 2
-      ),
-
-      Math.min(
-        scaleNotes.length - 1,
-        current + 4
-      ),
-    ];
-
-
-    const unique =
-      [
-        ...new Set(
-          noteIndexes
-        ),
-      ];
-
-
-    return unique.map(
-      (index) => {
-
-        let midi =
-          noteToMidi(
-            scaleNotes[
-              index
-            ]
-          );
-
-
-        // Keep the pad below the lead whenever possible.
-
-        if (
-          midi >= 60
-        ) {
-
-          midi -=
-            12;
-        }
-
-
-        return midiToNote(
-          midi
-        );
-      }
-    );
   }
 
 
@@ -1176,6 +1300,10 @@ export function createMusicEngine() {
       );
 
 
+    compositionEngine
+      .resetPitch();
+
+
     updatePitch(
       state.pitchValue,
       false
@@ -1193,7 +1321,7 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // GUIDED / PERFORM MODE
+  // PLAY MODE
   // ==========================================================
 
   function setMode(
@@ -1201,8 +1329,10 @@ export function createMusicEngine() {
   ) {
 
     if (
-      mode !== "guided" &&
-      mode !== "perform"
+      mode !==
+        "guided" &&
+      mode !==
+        "perform"
     ) {
 
       return false;
@@ -1228,32 +1358,138 @@ export function createMusicEngine() {
 
 
   // ==========================================================
+  // RACK API
+  // ==========================================================
+
+  function setRackMode(
+    mode
+  ) {
+
+    const success =
+      instrumentRack
+        .setMode(
+          mode
+        );
+
+
+    if (
+      success
+    ) {
+
+      updateInstrumentRouting();
+
+      exposeState();
+    }
+
+
+    return success;
+  }
+
+
+  function setZoneInstrument(
+    zoneId,
+    instrumentId
+  ) {
+
+    const success =
+      instrumentRack
+        .setZoneInstrument(
+          zoneId,
+          instrumentId
+        );
+
+
+    if (
+      success
+    ) {
+
+      updateInstrumentRouting();
+
+      exposeState();
+    }
+
+
+    return success;
+  }
+
+
+  function setSingleInstrument(
+    instrumentId
+  ) {
+
+    const success =
+      instrumentRack
+        .setSingleInstrument(
+          instrumentId
+        );
+
+
+    if (
+      success
+    ) {
+
+      updateInstrumentRouting();
+
+      exposeState();
+    }
+
+
+    return success;
+  }
+
+
+  function refreshInstrumentRouting() {
+
+    updateInstrumentRouting();
+
+    exposeState();
+  }
+
+
+  // ==========================================================
+  // COMPOSITION REFRESH
+  // ==========================================================
+
+  function refreshComposition() {
+
+    compositionEngine
+      .resetPitch();
+
+
+    lastHarmonyAbsoluteBar =
+      null;
+
+
+    updatePitch(
+      state.pitchValue,
+      false
+    );
+
+
+    exposeState();
+  }
+
+
+  // ==========================================================
   // STOP
   // ==========================================================
 
   function stopAll() {
+
+    samplePlayer
+      ?.stopAll();
+
 
     try {
 
       pad
         ?.releaseAll();
 
-
-      mallet
-        ?.triggerRelease();
-
-
-      previewSynth
-        ?.triggerRelease();
-
     }
 
-    catch (error) {
+    catch {
 
-      console.warn(
-        "[Music Engine V2] stopAll failed",
-        error
-      );
+      // Ignore release errors.
     }
   }
 
@@ -1263,6 +1499,11 @@ export function createMusicEngine() {
   // ==========================================================
 
   function getState() {
+
+    const composition =
+      compositionEngine
+        .getState();
+
 
     return {
 
@@ -1277,9 +1518,34 @@ export function createMusicEngine() {
 
       noteCount:
         scaleNotes.length,
+
+      harmony:
+        composition.harmony,
+
+      tempo:
+        composition.tempo,
+
+      grid:
+        composition.grid,
+
+      assistMode:
+        composition.assistMode,
+
+      rack:
+        instrumentRack
+          .getState(),
+
+      audioSources:
+        samplePlayer
+          ?.getStatus() ??
+        null,
     };
   }
 
+
+  // ==========================================================
+  // DEBUG
+  // ==========================================================
 
   function exposeState() {
 
@@ -1289,7 +1555,7 @@ export function createMusicEngine() {
 
 
   // ==========================================================
-  // SETTINGS
+  // SAVE
   // ==========================================================
 
   function saveSettings() {
@@ -1315,7 +1581,7 @@ export function createMusicEngine() {
     catch (error) {
 
       console.warn(
-        "Unable to save music settings",
+        "[Music Engine V4] Unable to save settings.",
         error
       );
     }
@@ -1339,12 +1605,22 @@ export function createMusicEngine() {
     setScale,
 
     setMode,
+
+    setRackMode,
+
+    setZoneInstrument,
+
+    setSingleInstrument,
+
+    refreshInstrumentRouting,
+
+    refreshComposition,
   };
 }
 
 
 // ============================================================
-// BUILD SCALE
+// SCALE
 // ============================================================
 
 function buildScaleNotes(
@@ -1363,17 +1639,23 @@ function buildScaleNotes(
 
 
   for (
-    let midi = MIDI_MIN;
-    midi <= MIDI_MAX;
+    let midi =
+      MIDI_MIN;
+
+    midi <=
+      MIDI_MAX;
+
     midi++
   ) {
 
     const relative =
-      (
+      positiveMod(
+
         midi -
-        MIDI_MIN
-      ) %
-      12;
+        MIDI_MIN,
+
+        12
+      );
 
 
     if (
@@ -1396,7 +1678,28 @@ function buildScaleNotes(
 
 
 // ============================================================
-// MIDI HELPERS
+// TONAL CONTEXT
+// ============================================================
+
+function getTonalContextName(
+  scale
+) {
+
+  if (
+    scale ===
+    "chromatic"
+  ) {
+
+    return "major";
+  }
+
+
+  return scale;
+}
+
+
+// ============================================================
+// MIDI
 // ============================================================
 
 function midiToNote(
@@ -1409,14 +1712,12 @@ function midiToNote(
     );
 
 
-  const noteName =
+  const name =
     NOTE_NAMES[
-      (
-        normalized %
-        12 +
+      positiveMod(
+        normalized,
         12
-      ) %
-      12
+      )
     ];
 
 
@@ -1429,84 +1730,14 @@ function midiToNote(
 
 
   return (
-    noteName +
+    name +
     octave
   );
 }
 
 
-function noteToMidi(
-  note
-) {
-
-  const match =
-    /^([A-G])(#?)(-?\d+)$/
-      .exec(
-        note
-      );
-
-
-  if (
-    !match
-  ) {
-
-    return 60;
-  }
-
-
-  const [
-    ,
-    letter,
-    sharp,
-    octaveText,
-  ] =
-    match;
-
-
-  const pitchClasses = {
-
-    C: 0,
-    D: 2,
-    E: 4,
-    F: 5,
-    G: 7,
-    A: 9,
-    B: 11,
-  };
-
-
-  let pitchClass =
-    pitchClasses[
-      letter
-    ];
-
-
-  if (
-    sharp
-  ) {
-
-    pitchClass +=
-      1;
-  }
-
-
-  const octave =
-    Number(
-      octaveText
-    );
-
-
-  return (
-    octave +
-    1
-  ) *
-    12 +
-    pitchClass;
-}
-
-
 // ============================================================
-// SETTINGS
+// STORAGE
 // ============================================================
 
 function loadSettings() {
@@ -1569,8 +1800,24 @@ function loadSettings() {
 
 
 // ============================================================
-// UTIL
+// HELPERS
 // ============================================================
+
+function positiveMod(
+  value,
+  divisor
+) {
+
+  return (
+    (
+      value %
+      divisor
+    ) +
+    divisor
+  ) %
+    divisor;
+}
+
 
 function clamp01(
   value

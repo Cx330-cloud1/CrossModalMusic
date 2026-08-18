@@ -86,12 +86,9 @@ const MUSIC_OPTIONS = [
     "Intensity / Velocity",
   ],
 
-  // Internal value stays "texture"
-  // so older saved mapping profiles remain compatible.
-
   [
     "texture",
-    "Ambient Pad",
+    "Expression / Space",
   ],
 
   [

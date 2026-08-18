@@ -1,16 +1,3 @@
-// ============================================================
-// MUSIC PERFORMANCE UI
-//
-// Makes the gesture instrument learnable:
-//
-// Scale
-// Guided / Perform
-// Current note
-// Pitch lane
-// Velocity
-// Ambient Pad
-// ============================================================
-
 const SCALE_LABELS = {
 
   pentatonic:
@@ -30,18 +17,35 @@ const SCALE_LABELS = {
 };
 
 
+const HARMONY_SEQUENCE = [
+  "Cmaj7",
+  "Am7",
+  "Fmaj7",
+  "G6",
+];
+
+
+// ============================================================
+// MUSIC UI V4
+// ============================================================
+
 export function createMusicPerformanceUI({
   engine,
+  compositionEngine,
+  instrumentRack,
   afterElement,
 }) {
 
   if (
     !engine ||
+    !compositionEngine ||
+    !instrumentRack ||
     !afterElement
   ) {
 
     return {
       update() {},
+      render() {},
     };
   }
 
@@ -56,13 +60,18 @@ export function createMusicPerformanceUI({
     "music-performance-section";
 
 
-  afterElement.insertAdjacentElement(
-    "afterend",
-    section
-  );
+  afterElement
+    .insertAdjacentElement(
+      "afterend",
+      section
+    );
 
 
   let lastNote =
+    null;
+
+
+  let lastHarmonyBar =
     null;
 
 
@@ -77,284 +86,423 @@ export function createMusicPerformanceUI({
 
 
     section.innerHTML = `
-      <div class="music-performance-header">
+      <div class="music-v4-heading">
 
         <div>
           <p class="eyebrow">
-            03 / MUSICAL INSTRUMENT
+            03 / PERFORMANCE
           </p>
 
           <h2>
-            Gesture Performance
+            Instrument Space
           </h2>
 
           <p>
-            Learn the spatial pitch language in Guided mode,
-            then switch to Performance mode for intentional playing.
+            Explore pitch, timbre and instrument regions
+            through gesture.
           </p>
         </div>
 
 
-        <div class="music-performance-controls">
+        <div class="now-playing-card">
 
-          <label>
-            SCALE
+          <span>
+            NOW PLAYING
+          </span>
 
-            <select id="musicScaleSelect">
-              ${Object.entries(
-                SCALE_LABELS
-              )
-                .map(
-                  ([
-                    value,
-                    label,
-                  ]) => `
-                    <option
-                      value="${value}"
-                      ${
-                        value ===
-                        state.scale
-                          ? "selected"
-                          : ""
-                      }
-                    >
-                      ${label}
-                    </option>
-                  `
-                )
-                .join("")}
-            </select>
-          </label>
+          <strong id="currentMusicNote">
+            ${state.note}
+          </strong>
 
+          <div>
+            <b id="currentInstrument">
+              ${state.instrumentLabel}
+            </b>
 
-          <div class="mode-control">
-
-            <span>
-              PLAY MODE
-            </span>
-
-            <div class="mode-buttons">
-
-              <button
-                type="button"
-                data-music-mode="guided"
-                class="${
-                  state.mode ===
-                  "guided"
-                    ? "active"
-                    : ""
-                }"
-              >
-                GUIDED
-              </button>
-
-              <button
-                type="button"
-                data-music-mode="perform"
-                class="${
-                  state.mode ===
-                  "perform"
-                    ? "active"
-                    : ""
-                }"
-              >
-                PERFORM
-              </button>
-
-            </div>
-
+            <small id="currentZone">
+              ${state.zoneLabel} REGISTER
+            </small>
           </div>
+
+          <em
+            id="currentNoteRole"
+            class="note-role-badge role-${state.noteRole}"
+          >
+            ${state.noteRoleLabel}
+          </em>
 
         </div>
 
       </div>
 
 
-      <div class="music-performance-grid">
+      <!-- =================================================
+           GLOBAL MUSIC SETTINGS
+      ================================================== -->
 
-        <div class="music-status-panel">
+      <div class="music-control-strip">
 
-          <div class="current-note-block">
+        <label>
+          <span>SCALE</span>
 
+          <select id="musicScaleSelect">
+
+            ${Object.entries(
+              SCALE_LABELS
+            ).map(
+              ([value, label]) => `
+                <option
+                  value="${value}"
+                  ${
+                    value === state.scale
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  ${label}
+                </option>
+              `
+            ).join("")}
+
+          </select>
+        </label>
+
+
+        <label>
+          <span>TEMPO</span>
+
+          <input
+            id="compositionTempo"
+            type="number"
+            min="50"
+            max="160"
+            value="${state.tempo}"
+          />
+        </label>
+
+
+        <label>
+          <span>GRID</span>
+
+          <select id="compositionGrid">
+
+            <option
+              value="free"
+              ${
+                state.grid === "free"
+                  ? "selected"
+                  : ""
+              }
+            >
+              Free
+            </option>
+
+            <option
+              value="1/8"
+              ${
+                state.grid === "1/8"
+                  ? "selected"
+                  : ""
+              }
+            >
+              1 / 8
+            </option>
+
+            <option
+              value="1/16"
+              ${
+                state.grid === "1/16"
+                  ? "selected"
+                  : ""
+              }
+            >
+              1 / 16
+            </option>
+
+          </select>
+        </label>
+
+
+        <div class="compact-mode-control">
+
+          <span>
+            ASSIST
+          </span>
+
+          <div class="mode-buttons">
+
+            ${[
+              "free",
+              "balanced",
+              "guided",
+            ].map(
+              (mode) => `
+                <button
+                  type="button"
+                  data-assist-mode="${mode}"
+                  class="${
+                    state.assistMode === mode
+                      ? "active"
+                      : ""
+                  }"
+                >
+                  ${mode.toUpperCase()}
+                </button>
+              `
+            ).join("")}
+
+          </div>
+        </div>
+
+
+        <div class="compact-mode-control">
+
+          <span>
+            PLAY
+          </span>
+
+          <div class="mode-buttons">
+
+            <button
+              type="button"
+              data-music-mode="guided"
+              class="${
+                state.mode === "guided"
+                  ? "active"
+                  : ""
+              }"
+            >
+              PREVIEW
+            </button>
+
+            <button
+              type="button"
+              data-music-mode="perform"
+              class="${
+                state.mode === "perform"
+                  ? "active"
+                  : ""
+              }"
+            >
+              PERFORM
+            </button>
+
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- =================================================
+           INSTRUMENT RACK
+      ================================================== -->
+
+      <div class="instrument-rack-panel">
+
+        <div class="instrument-rack-header">
+
+          <div>
             <span>
-              CURRENT PITCH
+              INSTRUMENT PALETTE
             </span>
 
-            <strong id="currentMusicNote">
-              ${state.note}
+            <strong>
+              Assign sound by register
             </strong>
-
-            <small id="currentScaleInfo">
-              ${SCALE_LABELS[state.scale]}
-              ·
-              ${state.noteCount} NOTES
-            </small>
-
           </div>
 
 
-          <div class="music-mode-explanation">
+          <div class="rack-mode-switch">
 
-            <div
-              id="musicModeIndicator"
-              class="music-mode-badge"
+            <button
+              type="button"
+              data-rack-mode="register"
+              class="${
+                state.rack.mode ===
+                "register"
+                  ? "active"
+                  : ""
+              }"
             >
-              ${
-                state.mode ===
-                "guided"
-                  ? "GUIDED"
-                  : "PERFORM"
-              }
-            </div>
+              REGISTER
+            </button>
 
-            <p id="musicModeDescription">
-              ${
-                state.mode ===
-                "guided"
-                  ? "Move vertically to hear a quiet pitch preview. Pinch to perform the full note."
-                  : "Movement selects pitch silently. Pinch performs the note."
-              }
-            </p>
-
-          </div>
-
-
-          <div class="performance-meter">
-
-            <div>
-
-              <span>
-                STRIKE INTENSITY
-              </span>
-
-              <strong id="musicIntensityValue">
-                ${state.intensity.toFixed(2)}
-              </strong>
-
-            </div>
-
-            <div class="performance-meter-track">
-              <div
-                id="musicIntensityBar"
-                style="width: ${
-                  state.intensity *
-                  100
-                }%"
-              ></div>
-            </div>
-
-          </div>
-
-
-          <div class="performance-meter pad-meter">
-
-            <div>
-
-              <span>
-                AMBIENT PAD
-              </span>
-
-              <strong id="musicPadValue">
-                ${state.padAmount.toFixed(2)}
-              </strong>
-
-            </div>
-
-            <div class="performance-meter-track">
-              <div
-                id="musicPadBar"
-                style="width: ${
-                  state.padAmount *
-                  100
-                }%"
-              ></div>
-            </div>
-
-          </div>
-
-
-          <div class="gesture-instrument-guide">
-
-            <div>
-              <span>LEFT / Y</span>
-              <strong>PITCH</strong>
-            </div>
-
-            <div>
-              <span>LEFT / X</span>
-              <strong>TIMBRE</strong>
-            </div>
-
-            <div>
-              <span>RIGHT / PINCH</span>
-              <strong>PLAY NOTE</strong>
-            </div>
-
-            <div>
-              <span>RIGHT / ENERGY</span>
-              <strong>VELOCITY</strong>
-            </div>
-
-            <div>
-              <span>RIGHT / OPENNESS</span>
-              <strong>AMBIENT PAD</strong>
-            </div>
+            <button
+              type="button"
+              data-rack-mode="single"
+              class="${
+                state.rack.mode ===
+                "single"
+                  ? "active"
+                  : ""
+              }"
+            >
+              SINGLE
+            </button>
 
           </div>
 
         </div>
 
 
-        <div class="pitch-lane-panel">
+        ${
+          state.rack.mode ===
+          "register"
 
-          <div class="pitch-lane-header">
+            ? renderRegisterRack(
+                state
+              )
+
+            : renderSingleRack(
+                state
+              )
+        }
+
+      </div>
+
+
+      <!-- =================================================
+           PERFORMANCE
+      ================================================== -->
+
+      <div class="music-v4-grid">
+
+        <div class="performance-context-panel">
+
+          <div class="harmony-hero">
 
             <span>
-              HIGH
+              HARMONY
             </span>
 
-            <strong>
-              PITCH SPACE
+            <strong id="currentHarmonyName">
+              ${state.harmony?.name ?? "—"}
             </strong>
 
+            <small id="harmonyPosition">
+              BAR
+              ${state.harmony?.displayBar ?? 1}
+              / 4
+              ·
+              BEAT
+              ${state.harmony?.beat ?? 1}
+              / 4
+            </small>
+          </div>
+
+
+          <div
+            id="phraseTimeline"
+            class="phrase-timeline"
+          >
+
+            ${HARMONY_SEQUENCE.map(
+              (chord, index) => `
+                <div
+                  class="phrase-bar ${
+                    state.harmony
+                      ?.barIndex === index
+                        ? "active"
+                        : ""
+                  }"
+                  data-harmony-bar="${index}"
+                >
+                  <span>
+                    0${index + 1}
+                  </span>
+
+                  <strong>
+                    ${chord}
+                  </strong>
+                </div>
+              `
+            ).join("")}
+
+          </div>
+
+
+          <div class="v4-meter-group">
+
+            ${renderMeter(
+              "musicIntensity",
+              "STRIKE",
+              state.intensity
+            )}
+
+            ${renderMeter(
+              "musicExpression",
+              "SPACE",
+              state.expression
+            )}
+
+          </div>
+
+
+          <div class="gesture-mini-guide">
+
             <span>
-              LOW
+              LEFT Y
+              <b>PITCH</b>
             </span>
+
+            <span>
+              LEFT X
+              <b>TIMBRE</b>
+            </span>
+
+            <span>
+              RIGHT PINCH
+              <b>PLAY</b>
+            </span>
+
+            <span>
+              RIGHT ENERGY
+              <b>VELOCITY</b>
+            </span>
+
+            <span>
+              RIGHT OPEN
+              <b>SPACE</b>
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <!-- ===============================================
+             PITCH MAP
+        ================================================ -->
+
+        <div class="pitch-space-panel">
+
+          <div class="pitch-space-heading">
+
+            <div>
+              <span>
+                PITCH MAP
+              </span>
+
+              <strong>
+                C3 — C6
+              </strong>
+            </div>
+
+            <small>
+              CHORD · COLOR · TENSION
+            </small>
 
           </div>
 
 
           <div
-            id="pitchLane"
-            class="pitch-lane"
+            id="pitchRegisterMap"
+            class="pitch-register-map"
           >
 
-            ${[
-              ...state.scaleNotes,
-            ]
-              .reverse()
-              .map(
-                (note) => `
-                  <div
-                    class="pitch-note ${
-                      note ===
-                      state.note
-                        ? "active"
-                        : ""
-                    }"
-                    data-pitch-note="${note}"
-                  >
-
-                    <span></span>
-
-                    <strong>
-                      ${note}
-                    </strong>
-
-                  </div>
-                `
-              )
-              .join("")}
+            ${renderPitchMap(
+              state
+            )}
 
           </div>
 
@@ -374,32 +522,429 @@ export function createMusicPerformanceUI({
 
 
   // ==========================================================
+  // REGISTER RACK
+  // ==========================================================
+
+  function renderRegisterRack(
+    state
+  ) {
+
+    const zones =
+      [
+        state.rack.zones.low,
+        state.rack.zones.mid,
+        state.rack.zones.high,
+      ];
+
+
+    return `
+      <div class="instrument-zone-grid">
+
+        ${zones.map(
+          (zone) => {
+
+            const instrument =
+              state.rack
+                .instruments
+                .find(
+                  (item) =>
+                    item.value ===
+                    zone.instrument
+                );
+
+
+            return `
+              <article
+                class="instrument-zone-card ${
+                  state.zoneId === zone.id
+                    ? "active"
+                    : ""
+                }"
+              >
+
+                <div class="zone-card-top">
+
+                  <span>
+                    ${zone.label}
+                  </span>
+
+                  <small>
+                    ${getZoneRange(zone.id)}
+                  </small>
+
+                </div>
+
+
+                <strong>
+                  ${instrument?.label ?? zone.instrument}
+                </strong>
+
+
+                <small>
+                  ${instrument?.family ?? ""}
+                </small>
+
+
+                <select
+                  data-zone-instrument="${zone.id}"
+                >
+                  ${renderInstrumentOptions(
+                    state,
+                    zone.instrument
+                  )}
+                </select>
+
+              </article>
+            `;
+          }
+        ).join("")}
+
+      </div>
+    `;
+  }
+
+
+  // ==========================================================
+  // SINGLE RACK
+  // ==========================================================
+
+  function renderSingleRack(
+    state
+  ) {
+
+    const selected =
+      state.rack
+        .singleInstrument;
+
+
+    return `
+      <div class="single-instrument-rack">
+
+        <div>
+          <span>
+            FULL RANGE
+          </span>
+
+          <strong>
+            C3 — C6
+          </strong>
+        </div>
+
+
+        <select
+          id="singleInstrumentSelect"
+        >
+          ${renderInstrumentOptions(
+            state,
+            selected
+          )}
+        </select>
+
+      </div>
+    `;
+  }
+
+
+  // ==========================================================
+  // INSTRUMENT OPTIONS
+  // ==========================================================
+
+  function renderInstrumentOptions(
+    state,
+    selected
+  ) {
+
+    return state.rack
+      .instruments
+      .map(
+        (instrument) => `
+          <option
+            value="${instrument.value}"
+            ${
+              instrument.value ===
+              selected
+                ? "selected"
+                : ""
+            }
+          >
+            ${instrument.label}
+          </option>
+        `
+      )
+      .join("");
+  }
+
+
+  // ==========================================================
+  // PITCH MAP
+  // ==========================================================
+
+  function renderPitchMap(
+    state
+  ) {
+
+    const groups = {
+
+      low:
+        [],
+
+      mid:
+        [],
+
+      high:
+        [],
+    };
+
+
+    for (
+      const note
+      of state.scaleNotes
+    ) {
+
+      const route =
+        instrumentRack
+          .routeNote(
+            note
+          );
+
+
+      groups[
+        route.zone.id
+      ].push(
+        note
+      );
+    }
+
+
+    return [
+      "low",
+      "mid",
+      "high",
+    ].map(
+      (zoneId) => {
+
+        const notes =
+          groups[
+            zoneId
+          ];
+
+
+        const firstNote =
+          notes[0];
+
+
+        const route =
+          firstNote
+            ? instrumentRack
+                .routeNote(
+                  firstNote
+                )
+            : null;
+
+
+        return `
+          <div class="register-band">
+
+            <div class="register-band-heading">
+
+              <span>
+                ${zoneId.toUpperCase()}
+              </span>
+
+              <strong>
+                ${
+                  route
+                    ?.instrument
+                    ?.label ??
+                  ""
+                }
+              </strong>
+
+            </div>
+
+
+            <div class="register-note-grid">
+
+              ${notes.map(
+                (note) => {
+
+                  const role =
+                    classifyForUI(
+                      note,
+                      state.scale
+                    );
+
+
+                  return `
+                    <div
+                      class="
+                        register-note
+                        role-${role.role}
+                        ${
+                          note ===
+                          state.note
+                            ? "active"
+                            : ""
+                        }
+                      "
+                      data-pitch-note="${note}"
+                    >
+
+                      <strong>
+                        ${note}
+                      </strong>
+
+                      <small
+                        class="note-role-label"
+                      >
+                        ${role.label}
+                      </small>
+
+                    </div>
+                  `;
+                }
+              ).join("")}
+
+            </div>
+
+          </div>
+        `;
+      }
+    ).join("");
+  }
+
+
+  // ==========================================================
+  // METER
+  // ==========================================================
+
+  function renderMeter(
+    id,
+    label,
+    value
+  ) {
+
+    return `
+      <div class="v4-meter">
+
+        <div>
+          <span>
+            ${label}
+          </span>
+
+          <strong
+            id="${id}Value"
+          >
+            ${value.toFixed(2)}
+          </strong>
+        </div>
+
+
+        <div class="v4-meter-track">
+
+          <div
+            id="${id}Bar"
+            style="
+              width:
+              ${value * 100}%;
+            "
+          ></div>
+
+        </div>
+
+      </div>
+    `;
+  }
+
+
+  // ==========================================================
   // EVENTS
   // ==========================================================
 
   function bindEvents() {
 
-    const scaleSelect =
-      section.querySelector(
+    section
+      .querySelector(
         "#musicScaleSelect"
+      )
+      ?.addEventListener(
+        "change",
+        (event) => {
+
+          engine.setScale(
+            event.target.value
+          );
+
+          render();
+        }
       );
 
 
-    scaleSelect
+    section
+      .querySelector(
+        "#compositionTempo"
+      )
       ?.addEventListener(
         "change",
-        () => {
+        (event) => {
 
-          engine.setScale(
-            scaleSelect.value
-          );
+          compositionEngine
+            .setTempo(
+              event.target.value
+            );
 
-
-          lastNote =
-            null;
-
+          engine
+            .refreshComposition();
 
           render();
+        }
+      );
+
+
+    section
+      .querySelector(
+        "#compositionGrid"
+      )
+      ?.addEventListener(
+        "change",
+        (event) => {
+
+          compositionEngine
+            .setGrid(
+              event.target.value
+            );
+
+          engine
+            .refreshComposition();
+
+          render();
+        }
+      );
+
+
+    section
+      .querySelectorAll(
+        "[data-assist-mode]"
+      )
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              compositionEngine
+                .setAssistMode(
+                  button.dataset
+                    .assistMode
+                );
+
+              engine
+                .refreshComposition();
+
+              render();
+            }
+          );
         }
       );
 
@@ -420,31 +965,91 @@ export function createMusicPerformanceUI({
                   .musicMode
               );
 
+              render();
+            }
+          );
+        }
+      );
+
+
+    section
+      .querySelectorAll(
+        "[data-rack-mode]"
+      )
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              engine
+                .setRackMode(
+                  button.dataset
+                    .rackMode
+                );
 
               render();
             }
           );
         }
       );
+
+
+    section
+      .querySelectorAll(
+        "[data-zone-instrument]"
+      )
+      .forEach(
+        (select) => {
+
+          select.addEventListener(
+            "change",
+            () => {
+
+              engine
+                .setZoneInstrument(
+
+                  select.dataset
+                    .zoneInstrument,
+
+                  select.value
+                );
+
+              render();
+            }
+          );
+        }
+      );
+
+
+    section
+      .querySelector(
+        "#singleInstrumentSelect"
+      )
+      ?.addEventListener(
+        "change",
+        (event) => {
+
+          engine
+            .setSingleInstrument(
+              event.target.value
+            );
+
+          render();
+        }
+      );
   }
 
 
   // ==========================================================
-  // LIVE UPDATE
+  // UPDATE
   // ==========================================================
 
   function update(
-    state
+    state =
+      engine.getState()
   ) {
-
-    if (
-      !state
-    ) {
-
-      state =
-        engine.getState();
-    }
-
 
     setText(
       "#currentMusicNote",
@@ -453,54 +1058,68 @@ export function createMusicPerformanceUI({
 
 
     setText(
-      "#musicIntensityValue",
-      state.intensity.toFixed(
-        2
-      )
+      "#currentInstrument",
+      state.instrumentLabel
     );
 
 
     setText(
-      "#musicPadValue",
-      state.padAmount.toFixed(
-        2
-      )
+      "#currentZone",
+      `${
+        state.zoneLabel
+      } REGISTER`
     );
 
 
-    const intensityBar =
+    setText(
+      "#currentHarmonyName",
+      state.harmony?.name ??
+      "—"
+    );
+
+
+    setText(
+      "#harmonyPosition",
+      `BAR ${
+        state.harmony
+          ?.displayBar ??
+        1
+      } / 4 · BEAT ${
+        state.harmony
+          ?.beat ??
+        1
+      } / 4`
+    );
+
+
+    updateMeter(
+      "musicIntensity",
+      state.intensity
+    );
+
+
+    updateMeter(
+      "musicExpression",
+      state.expression
+    );
+
+
+    const role =
       section.querySelector(
-        "#musicIntensityBar"
+        "#currentNoteRole"
       );
 
 
     if (
-      intensityBar
+      role
     ) {
 
-      intensityBar.style.width =
-        `${
-          state.intensity *
-          100
-        }%`;
-    }
+      role.textContent =
+        state.noteRoleLabel;
 
 
-    const padBar =
-      section.querySelector(
-        "#musicPadBar"
-      );
-
-
-    if (
-      padBar
-    ) {
-
-      padBar.style.width =
-        `${
-          state.padAmount *
-          100
-        }%`;
+      role.className =
+        `note-role-badge role-${state.noteRole}`;
     }
 
 
@@ -511,19 +1130,20 @@ export function createMusicPerformanceUI({
 
       section
         .querySelectorAll(
-          ".pitch-note"
+          "[data-pitch-note]"
         )
         .forEach(
           (element) => {
 
-            element.classList.toggle(
+            element.classList
+              .toggle(
 
-              "active",
+                "active",
 
-              element.dataset
-                .pitchNote ===
-                state.note
-            );
+                element.dataset
+                  .pitchNote ===
+                  state.note
+              );
           }
         );
 
@@ -531,12 +1151,170 @@ export function createMusicPerformanceUI({
       lastNote =
         state.note;
     }
+
+
+    if (
+      state.harmony
+        ?.absoluteBar !==
+      lastHarmonyBar
+    ) {
+
+      updateHarmonyDisplay(
+        state
+      );
+
+
+      lastHarmonyBar =
+        state.harmony
+          ?.absoluteBar;
+    }
   }
 
 
+  // ==========================================================
+  // HARMONY UI
+  // ==========================================================
+
+  function updateHarmonyDisplay(
+    state
+  ) {
+
+    section
+      .querySelectorAll(
+        "[data-harmony-bar]"
+      )
+      .forEach(
+        (element) => {
+
+          element.classList.toggle(
+
+            "active",
+
+            Number(
+              element.dataset
+                .harmonyBar
+            ) ===
+              state.harmony
+                ?.barIndex
+          );
+        }
+      );
+
+
+    section
+      .querySelectorAll(
+        "[data-pitch-note]"
+      )
+      .forEach(
+        (element) => {
+
+          const role =
+            classifyForUI(
+
+              element.dataset
+                .pitchNote,
+
+              state.scale
+            );
+
+
+          element.classList.remove(
+            "role-chord",
+            "role-color",
+            "role-tension"
+          );
+
+
+          element.classList.add(
+            `role-${role.role}`
+          );
+
+
+          const label =
+            element.querySelector(
+              ".note-role-label"
+            );
+
+
+          if (
+            label
+          ) {
+
+            label.textContent =
+              role.label;
+          }
+        }
+      );
+  }
+
+
+  // ==========================================================
+  // CLASSIFY
+  // ==========================================================
+
+  function classifyForUI(
+    note,
+    scale
+  ) {
+
+    return compositionEngine
+      .classifyNote(
+
+        note,
+
+        scale ===
+          "chromatic"
+
+          ? "major"
+
+          : scale
+      );
+  }
+
+
+  // ==========================================================
+  // METER UPDATE
+  // ==========================================================
+
+  function updateMeter(
+    id,
+    value
+  ) {
+
+    setText(
+      `#${id}Value`,
+      value.toFixed(
+        2
+      )
+    );
+
+
+    const bar =
+      section.querySelector(
+        `#${id}Bar`
+      );
+
+
+    if (
+      bar
+    ) {
+
+      bar.style.width =
+        `${
+          value *
+          100
+        }%`;
+    }
+  }
+
+
+  // ==========================================================
+  // TEXT
+  // ==========================================================
+
   function setText(
     selector,
-    value
+    text
   ) {
 
     const element =
@@ -550,7 +1328,7 @@ export function createMusicPerformanceUI({
     ) {
 
       element.textContent =
-        value;
+        text;
     }
   }
 
@@ -560,8 +1338,33 @@ export function createMusicPerformanceUI({
 
   return {
 
-    update,
-
     render,
+
+    update,
   };
+}
+
+
+// ============================================================
+// RANGE LABEL
+// ============================================================
+
+function getZoneRange(
+  zoneId
+) {
+
+  switch (
+    zoneId
+  ) {
+
+    case "low":
+      return "C3 — B3";
+
+    case "high":
+      return "C5 — C6";
+
+    case "mid":
+    default:
+      return "C4 — B4";
+  }
 }
