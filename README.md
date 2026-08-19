@@ -124,13 +124,6 @@ cd CrossModalMusic/app
 npm install
 npm run dev
 ```
-
-Open:
-
-```text
-http://localhost:5173/
-```
-
 A webcam-enabled browser is required for gesture input.
 
 ## Next Steps
