@@ -45,6 +45,26 @@ import {
   createPitchOverlay,
 } from "./ui/pitchOverlay.js";
 
+import {
+  createPerformanceWorkspaceUI,
+} from "./ui/workspaceUI.js";
+
+import {
+  createFingerSleeveEngine,
+} from "./device/fingerSleeveEngine.js";
+
+import {
+  createFingerSleeveSimulator,
+} from "./device/fingerSleeveSimulator.js";
+
+import {
+  createDeviceMappingAdapter,
+} from "./device/deviceMappingAdapter.js";
+
+import {
+  createDeviceUI,
+} from "./ui/deviceUI.js";
+
 
 // ============================================================
 // DOM
@@ -113,6 +133,24 @@ const visualCanvas =
 const hapticOutputSection =
   document.querySelector(
     ".haptic-output-section"
+  );
+
+
+const cameraSection =
+  document.querySelector(
+    ".camera-section"
+  );
+
+
+const technicalPanel =
+  document.querySelector(
+    "main > aside"
+  );
+
+
+const deviceSection =
+  document.querySelector(
+    "#deviceSection"
   );
 
 
@@ -262,7 +300,7 @@ const handUI = {
 
 
 // ============================================================
-// TRACKING STATE
+// TRACKING / SESSION STATE
 // ============================================================
 
 let handTracker =
@@ -271,6 +309,10 @@ let handTracker =
 
 let previousVideoTime =
   -1;
+
+
+let audioReady =
+  false;
 
 
 const previousFeatureStates = {
@@ -315,17 +357,6 @@ const compositionEngine =
 
 // ------------------------------------------------------------
 // INSTRUMENT RACK
-//
-// REGISTER mode:
-//
-// LOW
-// C3–B3
-//
-// MID
-// C4–B4
-//
-// HIGH
-// C5–C6
 // ------------------------------------------------------------
 
 const instrumentRack =
@@ -333,7 +364,7 @@ const instrumentRack =
 
 
 // ------------------------------------------------------------
-// MUSIC ENGINE V4
+// MUSIC
 // ------------------------------------------------------------
 
 const musicEngine =
@@ -357,9 +388,6 @@ const visualEngine =
 
 // ------------------------------------------------------------
 // HAPTIC
-//
-// Status elements are outside #hapticBodyMap,
-// therefore the full output section is used as root.
 // ------------------------------------------------------------
 
 const hapticEngine =
@@ -371,11 +399,54 @@ const hapticEngine =
 
 
 // ============================================================
+// FINGER SLEEVE DEVICE LAYER
+// ============================================================
+
+// ------------------------------------------------------------
+// DEVICE STATE
+// ------------------------------------------------------------
+
+const fingerSleeveEngine =
+  createFingerSleeveEngine();
+
+
+// ------------------------------------------------------------
+// SOFTWARE SIMULATOR
+// ------------------------------------------------------------
+
+const fingerSleeveSimulator =
+  createFingerSleeveSimulator({
+
+    engine:
+      fingerSleeveEngine,
+  });
+
+
+// ------------------------------------------------------------
+// DEVICE → GENERIC CROSS-MODAL OUTPUT
+//
+// Finger Sleeve
+//      ↓
+// Generic Mapping Format
+//      ↓
+// Music + Visual + Haptic
+//
+// This is important because future ESP32 / BLE / Serial input
+// can use exactly the same downstream pipeline.
+// ------------------------------------------------------------
+
+const deviceMappingAdapter =
+  createDeviceMappingAdapter();
+
+
+// ============================================================
 // UI
 // ============================================================
 
 // ------------------------------------------------------------
 // MAPPING STUDIO
+//
+// Must be created before Workspace UI.
 // ------------------------------------------------------------
 
 const mappingUI =
@@ -391,6 +462,8 @@ const mappingUI =
 
 // ------------------------------------------------------------
 // MUSIC PERFORMANCE UI
+//
+// Created before Mapping Studio is moved into the drawer.
 // ------------------------------------------------------------
 
 const musicUI =
@@ -410,14 +483,6 @@ const musicUI =
 
 // ------------------------------------------------------------
 // CAMERA PITCH OVERLAY
-//
-// Camera becomes part of the instrument.
-//
-// Hand height
-// ↓
-// Pitch position
-// ↓
-// Current Note + Register + Instrument
 // ------------------------------------------------------------
 
 const pitchOverlay =
@@ -428,20 +493,61 @@ const pitchOverlay =
   });
 
 
+// ------------------------------------------------------------
+// PERFORMANCE WORKSPACE
+// ------------------------------------------------------------
+
+const workspaceUI =
+  createPerformanceWorkspaceUI({
+
+    mappingElement:
+      mappingStudioContainer,
+
+    cameraSection,
+
+    technicalPanel,
+  });
+
+
+// ------------------------------------------------------------
+// FINGER SLEEVE DIGITAL TWIN UI
+// ------------------------------------------------------------
+
+const deviceUI =
+  createDeviceUI({
+
+    container:
+      deviceSection,
+
+    engine:
+      fingerSleeveEngine,
+
+    simulator:
+      fingerSleeveSimulator,
+  });
+
+
 // ============================================================
 // DEBUG API
 //
-// Browser console:
+// Browser Console:
 //
 // window.mappingStudio
 // window.compositionStudio
 // window.instrumentRack
 // window.musicStudio
+// window.workspaceStudio
+//
+// window.fingerSleeveEngine
+// window.fingerSleeveSimulator
 //
 // window.crossModalHands
 // window.crossModalMapping
+// window.crossModalDevice
+// window.crossModalDeviceMapping
 // window.crossModalAudio
 // window.crossModalHaptics
+// window.crossModalWorkspace
 // ============================================================
 
 window.mappingStudio =
@@ -460,6 +566,18 @@ window.musicStudio =
   musicEngine;
 
 
+window.workspaceStudio =
+  workspaceUI;
+
+
+window.fingerSleeveEngine =
+  fingerSleeveEngine;
+
+
+window.fingerSleeveSimulator =
+  fingerSleeveSimulator;
+
+
 window.crossModalHands =
   [];
 
@@ -474,12 +592,161 @@ window.crossModalMapping = {
 };
 
 
+window.crossModalDevice =
+  fingerSleeveEngine.getState();
+
+
+window.crossModalDeviceMapping =
+  deviceMappingAdapter.resolve(
+    fingerSleeveEngine.getState()
+  );
+
+
 window.crossModalAudio =
   musicEngine.getState();
 
 
 window.crossModalHaptics =
   hapticEngine.getState();
+
+
+window.crossModalWorkspace =
+  workspaceUI.getState();
+
+
+// ============================================================
+// DEVICE LIVE PIPELINE
+//
+// Whenever Finger Sleeve state changes:
+//
+// Finger Sleeve
+//     ↓
+// Device Mapping Adapter
+//     ↓
+// Music
+// Visual
+// Haptic
+//
+// Before START SESSION:
+// Digital Twin still works,
+// but audio playback is disabled.
+// ============================================================
+
+fingerSleeveEngine.subscribe(
+  (state) => {
+
+    // ========================================================
+    // DEVICE STATE
+    // ========================================================
+
+    window.crossModalDevice =
+      state;
+
+
+    // ========================================================
+    // DEVICE → MAPPING OUTPUT
+    // ========================================================
+
+    const deviceMappingOutput =
+      deviceMappingAdapter.resolve(
+        state
+      );
+
+
+    window.crossModalDeviceMapping =
+      deviceMappingOutput;
+
+
+    // ========================================================
+    // WAIT UNTIL AUDIO CONTEXT IS READY
+    //
+    // Browser requires user interaction before Tone.js audio
+    // can start.
+    //
+    // Device UI / simulation remains fully usable.
+    // ========================================================
+
+    if (
+      !audioReady
+    ) {
+
+      return;
+    }
+
+
+    // ========================================================
+    // MUSIC
+    //
+    // Pressure + Impact
+    //      ↓
+    // Intensity
+    //
+    // Contact / Tap
+    //      ↓
+    // Note Trigger
+    // ========================================================
+
+    musicEngine.process(
+      deviceMappingOutput
+    );
+
+
+    window.crossModalAudio =
+      musicEngine.getState();
+
+
+    musicUI.update(
+      window.crossModalAudio
+    );
+
+
+    // ========================================================
+    // PERFORMANCE WORKSPACE
+    // ========================================================
+
+    workspaceUI.update({
+
+      audioState:
+        window.crossModalAudio,
+
+      hands:
+        window.crossModalHands ??
+        [],
+    });
+
+
+    window.crossModalWorkspace =
+      workspaceUI.getState();
+
+
+    // ========================================================
+    // VISUAL
+    //
+    // Strike Energy → Particle Energy
+    // Touch → Pulse
+    // ========================================================
+
+    visualEngine.process(
+      deviceMappingOutput
+    );
+
+
+    // ========================================================
+    // HAPTIC
+    //
+    // Strike Energy → Intensity
+    // Touch → Alternating pattern
+    // ========================================================
+
+    hapticEngine.process(
+      deviceMappingOutput
+    );
+
+
+    window.crossModalHaptics =
+      hapticEngine.getState();
+  }
+);
 
 
 // ============================================================
@@ -506,13 +773,67 @@ async function startSession() {
     "LOADING";
 
 
+  statusElement.classList.remove(
+    "live"
+  );
+
+
+  cameraMessage.style.display =
+    "block";
+
+
+  cameraMessage.textContent =
+    "Preparing instrument";
+
+
   // ==========================================================
   // AUDIO
+  //
+  // Still sequential for V2.2 stability.
+  //
+  // Startup optimization will happen after the interaction
+  // architecture is stable.
   // ==========================================================
 
   try {
 
     await musicEngine.start();
+
+
+    audioReady =
+      true;
+
+
+    // ========================================================
+    // SYNC CURRENT DEVICE STATE
+    //
+    // Example:
+    // user connected Finger Sleeve before pressing START.
+    //
+    // We immediately apply current pressure / contact state.
+    // ========================================================
+
+    const currentDeviceState =
+      fingerSleeveEngine.getState();
+
+
+    const currentDeviceMapping =
+      deviceMappingAdapter.resolve(
+        currentDeviceState
+      );
+
+
+    window.crossModalDevice =
+      currentDeviceState;
+
+
+    window.crossModalDeviceMapping =
+      currentDeviceMapping;
+
+
+    musicEngine.process(
+      currentDeviceMapping
+    );
 
 
     window.crossModalAudio =
@@ -522,6 +843,16 @@ async function startSession() {
     musicUI.update(
       window.crossModalAudio
     );
+
+
+    workspaceUI.update({
+
+      audioState:
+        window.crossModalAudio,
+
+      hands:
+        [],
+    });
 
 
     console.log(
@@ -536,6 +867,12 @@ async function startSession() {
 
 
     console.log(
+      "[CrossModalMusic] Finger Sleeve",
+      currentDeviceState
+    );
+
+
+    console.log(
       "[CrossModalMusic] Audio State",
       window.crossModalAudio
     );
@@ -543,6 +880,10 @@ async function startSession() {
   }
 
   catch (error) {
+
+    audioReady =
+      false;
+
 
     console.error(
       "Unable to initialize audio:",
@@ -557,8 +898,16 @@ async function startSession() {
 
   try {
 
+    cameraMessage.textContent =
+      "Loading gesture engine";
+
+
     handTracker =
       await createHandTracker();
+
+
+    cameraMessage.textContent =
+      "Connecting camera";
 
 
     const stream =
@@ -576,6 +925,9 @@ async function startSession() {
               ideal:
                 720,
             },
+
+            facingMode:
+              "user",
           },
 
           audio:
@@ -610,6 +962,10 @@ async function startSession() {
       "SESSION ACTIVE";
 
 
+    startButton.disabled =
+      true;
+
+
     requestAnimationFrame(
       detectionLoop
     );
@@ -638,7 +994,9 @@ async function startSession() {
 
 
     cameraMessage.textContent =
-      "Unable to initialize camera";
+      getCameraErrorMessage(
+        error
+      );
 
 
     startButton.disabled =
@@ -648,6 +1006,59 @@ async function startSession() {
     startButton.textContent =
       "TRY AGAIN";
   }
+}
+
+
+// ============================================================
+// CAMERA ERROR MESSAGE
+// ============================================================
+
+function getCameraErrorMessage(
+  error
+) {
+
+  const name =
+    error?.name ??
+    "";
+
+
+  if (
+    name ===
+    "NotAllowedError"
+  ) {
+
+    return "Camera permission denied";
+  }
+
+
+  if (
+    name ===
+    "NotReadableError"
+  ) {
+
+    return "Camera may be in use by another application";
+  }
+
+
+  if (
+    name ===
+    "NotFoundError"
+  ) {
+
+    return "No camera detected";
+  }
+
+
+  if (
+    name ===
+    "OverconstrainedError"
+  ) {
+
+    return "Camera configuration unavailable";
+  }
+
+
+  return "Unable to initialize gesture session";
 }
 
 
@@ -669,18 +1080,30 @@ function detectionLoop() {
       video.currentTime;
 
 
-    const result =
-      handTracker.detectForVideo(
+    try {
 
-        video,
+      const result =
+        handTracker.detectForVideo(
 
-        performance.now()
+          video,
+
+          performance.now()
+        );
+
+
+      processDetectionResult(
+        result
       );
 
+    }
 
-    processDetectionResult(
-      result
-    );
+    catch (error) {
+
+      console.error(
+        "Hand tracking frame failed:",
+        error
+      );
+    }
   }
 
 
@@ -764,12 +1187,6 @@ function processDetectionResult(
       .reset();
 
 
-    // --------------------------------------------------------
-    // Reset pitch stability.
-    //
-    // Harmony clock keeps moving.
-    // --------------------------------------------------------
-
     compositionEngine
       .resetPitch();
 
@@ -778,7 +1195,11 @@ function processDetectionResult(
       [];
 
 
-    const emptyOutput =
+    // ========================================================
+    // HAND MAPPING EMPTY
+    // ========================================================
+
+    const emptyHandOutput =
       [];
 
 
@@ -788,18 +1209,22 @@ function processDetectionResult(
         mappingEngine.getProfile(),
 
       output:
-        emptyOutput,
+        emptyHandOutput,
     };
 
 
     mappingUI.updateLiveValues(
-      emptyOutput
+      emptyHandOutput
     );
 
 
-    // --------------------------------------------------------
-    // Keep harmony / composition timeline alive.
-    // --------------------------------------------------------
+    // ========================================================
+    // KEEP MUSIC TIMELINE RUNNING
+    //
+    // Important:
+    // Finger Sleeve events are handled independently by the
+    // device subscription above.
+    // ========================================================
 
     musicEngine.process(
       []
@@ -815,16 +1240,33 @@ function processDetectionResult(
     );
 
 
-    // --------------------------------------------------------
-    // No hand → hide current camera pitch marker.
-    // --------------------------------------------------------
+    workspaceUI.update({
+
+      audioState:
+        window.crossModalAudio,
+
+      hands:
+        [],
+    });
+
+
+    window.crossModalWorkspace =
+      workspaceUI.getState();
+
+
+    // ========================================================
+    // CAMERA PITCH OVERLAY
+    // ========================================================
 
     pitchOverlay.clear();
 
 
-    // --------------------------------------------------------
-    // Clear responsive outputs.
-    // --------------------------------------------------------
+    // ========================================================
+    // HAND-DRIVEN VISUAL / HAPTIC
+    //
+    // Device events are still independently delivered through
+    // fingerSleeveEngine.subscribe().
+    // ========================================================
 
     visualEngine.clear();
 
@@ -1104,7 +1546,7 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // INPUT DEBUG
+  // HAND INPUT DEBUG
   // ==========================================================
 
   window.crossModalHands =
@@ -1112,10 +1554,10 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // PERSONAL MAPPING
+  // CAMERA / GESTURE MAPPING
   // ==========================================================
 
-  const mappingOutput =
+  const handMappingOutput =
     mappingEngine.resolve(
       currentData
     );
@@ -1127,33 +1569,47 @@ function processDetectionResult(
       mappingEngine.getProfile(),
 
     output:
-      mappingOutput,
+      handMappingOutput,
   };
 
 
   mappingUI.updateLiveValues(
-    mappingOutput
+    handMappingOutput
   );
 
 
   // ==========================================================
-  // MUSIC PIPELINE
+  // MUSIC
   //
-  // Gesture
-  // ↓
-  // Mapping
-  // ↓
-  // Composition Assist
-  // ↓
-  // Pitch / Harmony / Rhythm
-  // ↓
-  // Instrument Rack
-  // ↓
-  // Sample Player
+  // Camera mapping continues to control:
+  //
+  // Left Y
+  // → pitch
+  //
+  // Left X
+  // → timbre
+  //
+  // Right Pinch
+  // → fallback note trigger
+  //
+  // Right Speed
+  // → intensity
+  //
+  // Right Openness
+  // → expression
+  //
+  //
+  // Finger Sleeve is delivered independently:
+  //
+  // Touch
+  // → note trigger
+  //
+  // Pressure + Impact
+  // → intensity
   // ==========================================================
 
   musicEngine.process(
-    mappingOutput
+    handMappingOutput
   );
 
 
@@ -1167,10 +1623,25 @@ function processDetectionResult(
 
 
   // ==========================================================
+  // PERFORMANCE WORKSPACE
+  // ==========================================================
+
+  workspaceUI.update({
+
+    audioState:
+      window.crossModalAudio,
+
+    hands:
+      currentData,
+  });
+
+
+  window.crossModalWorkspace =
+    workspaceUI.getState();
+
+
+  // ==========================================================
   // CAMERA PITCH OVERLAY
-  //
-  // LEFT Y position and current resolved musical state
-  // are visually connected inside the camera.
   // ==========================================================
 
   pitchOverlay.update(
@@ -1179,20 +1650,20 @@ function processDetectionResult(
 
 
   // ==========================================================
-  // VISUAL OUTPUT
+  // VISUAL
   // ==========================================================
 
   visualEngine.process(
-    mappingOutput
+    handMappingOutput
   );
 
 
   // ==========================================================
-  // HAPTIC OUTPUT
+  // HAPTIC
   // ==========================================================
 
   hapticEngine.process(
-    mappingOutput
+    handMappingOutput
   );
 
 

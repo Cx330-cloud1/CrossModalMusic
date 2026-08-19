@@ -10,7 +10,14 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Cross-modal Mapping Studio</title>
+  <meta
+    name="description"
+    content="Cross-modal Music — a multisensory gesture, tactile and haptic music-making system."
+  />
+
+  <title>
+    Cross-modal Music
+  </title>
 </head>
 
 
@@ -27,11 +34,11 @@
       <div>
 
         <p class="eyebrow">
-          MULTISENSORY MUSIC SYSTEM / TECHNICAL PROTOTYPE
+          MULTISENSORY MUSIC SYSTEM / INTERACTIVE PROTOTYPE
         </p>
 
         <h1>
-          Cross-modal Mapping Studio
+          Cross-modal Music
         </h1>
 
       </div>
@@ -44,8 +51,9 @@
     </header>
 
 
+
     <!-- =====================================================
-         01 / GESTURE INPUT
+         01 / PERFORMANCE INPUT
     ====================================================== -->
 
     <main>
@@ -59,11 +67,11 @@
         <div class="section-header">
 
           <span>
-            01 / GESTURE INPUT
+            01 / PERFORMANCE INPUT
           </span>
 
           <span>
-            MEDIAPIPE HAND TRACKING
+            CAMERA + TOUCH
           </span>
 
         </div>
@@ -74,6 +82,7 @@
           <video
             id="webcam"
             autoplay
+            muted
             playsinline
           ></video>
 
@@ -93,15 +102,19 @@
         </div>
 
 
-        <button id="startButton">
+        <button
+          id="startButton"
+          type="button"
+        >
           START SESSION
         </button>
 
       </section>
 
 
+
       <!-- ===================================================
-           DUAL-HAND DATA
+           DEBUG / LIVE BODY FEATURES
       ==================================================== -->
 
       <aside>
@@ -155,10 +168,15 @@
 
         <p class="side-description">
           Each hand forms an independent input channel.
-          Musical meaning is assigned through the
-          Personal Mapping Layer.
+          Musical meaning is assigned through the Personal
+          Mapping Layer.
         </p>
 
+
+
+        <!-- =================================================
+             DUAL HAND GRID
+        ================================================== -->
 
         <div class="dual-hand-grid">
 
@@ -208,6 +226,7 @@
             </div>
 
 
+
             <!-- X -->
 
             <div class="hand-feature">
@@ -230,6 +249,7 @@
               </div>
 
             </div>
+
 
 
             <!-- Y -->
@@ -256,6 +276,7 @@
             </div>
 
 
+
             <!-- PINCH -->
 
             <div class="hand-feature">
@@ -278,6 +299,7 @@
               </div>
 
             </div>
+
 
 
             <!-- OPENNESS -->
@@ -304,6 +326,7 @@
             </div>
 
 
+
             <!-- ENERGY -->
 
             <div class="hand-feature">
@@ -328,6 +351,7 @@
             </div>
 
           </section>
+
 
 
           <!-- ===============================================
@@ -375,6 +399,7 @@
             </div>
 
 
+
             <!-- X -->
 
             <div class="hand-feature">
@@ -397,6 +422,7 @@
               </div>
 
             </div>
+
 
 
             <!-- Y -->
@@ -423,6 +449,7 @@
             </div>
 
 
+
             <!-- PINCH -->
 
             <div class="hand-feature">
@@ -447,6 +474,7 @@
             </div>
 
 
+
             <!-- OPENNESS -->
 
             <div class="hand-feature">
@@ -469,6 +497,7 @@
               </div>
 
             </div>
+
 
 
             <!-- ENERGY -->
@@ -499,27 +528,28 @@
         </div>
 
 
+
         <!-- =================================================
-             SYSTEM FLOW
+             PIPELINE
         ================================================== -->
 
         <div class="mapping-preview">
 
           <p class="eyebrow">
-            PERSONAL MAPPING PIPELINE
+            CROSS-MODAL PIPELINE
           </p>
 
 
           <div>
 
             <span>
-              HAND
+              BODY
             </span>
 
             <b>→</b>
 
             <span>
-              FEATURE
+              TOUCH
             </span>
 
             <b>→</b>
@@ -537,7 +567,7 @@
             <b>→</b>
 
             <span>
-              BODY
+              HAPTIC
             </span>
 
           </div>
@@ -549,8 +579,24 @@
     </main>
 
 
+
     <!-- =====================================================
-         02 / PERSONAL MAPPING
+         02 / DEVICE INPUT
+
+         Finger Sleeve Digital Twin
+         rendered dynamically by deviceUI.js
+    ====================================================== -->
+
+    <section
+      id="deviceSection"
+      aria-label="Finger Sleeve Device Input"
+    >
+    </section>
+
+
+
+    <!-- =====================================================
+         03 / PERSONAL MAPPING
     ====================================================== -->
 
     <section
@@ -560,8 +606,9 @@
     </section>
 
 
+
     <!-- =====================================================
-         03 / VISUAL OUTPUT
+         04 / VISUAL OUTPUT
     ====================================================== -->
 
     <section class="visual-output-section">
@@ -571,7 +618,7 @@
         <div>
 
           <p class="eyebrow">
-            03 / MULTISENSORY OUTPUT
+            04 / MULTISENSORY OUTPUT
           </p>
 
           <h2>
@@ -579,8 +626,8 @@
           </h2>
 
           <p>
-            The same personal mapping is translated
-            into a live visual language.
+            Musical gestures and personal mappings are
+            translated into a live visual language.
           </p>
 
         </div>
@@ -624,7 +671,7 @@
           </span>
 
           <strong>
-            Gesture → Mapping → Visual
+            Gesture + Touch → Mapping → Visual
           </strong>
 
         </div>
@@ -634,18 +681,25 @@
     </section>
 
 
+
     <!-- =====================================================
-         04 / HAPTIC OUTPUT
+         05 / HAPTIC OUTPUT
+         ORIGINAL VERSION
     ====================================================== -->
 
     <section class="haptic-output-section">
+
+
+      <!-- ===================================================
+           HEADER
+      ==================================================== -->
 
       <div class="haptic-output-header">
 
         <div>
 
           <p class="eyebrow">
-            04 / BODY OUTPUT
+            05 / BODY OUTPUT
           </p>
 
           <h2>
@@ -661,7 +715,13 @@
         </div>
 
 
+
+        <!-- ===============================================
+             SYSTEM STATE
+        ================================================ -->
+
         <div class="haptic-system-state">
+
 
           <div>
 
@@ -706,8 +766,9 @@
       </div>
 
 
+
       <!-- ===================================================
-           FOUR-POINT CLAVICLE MAP
+           FOUR-POINT CLAVICLE ARRAY
       ==================================================== -->
 
       <div
@@ -715,21 +776,35 @@
         class="haptic-body-map"
       >
 
+
+        <!-- ===============================================
+             TITLE
+        ================================================ -->
+
         <div class="body-map-title">
           FOUR-POINT CLAVICLE ARRAY
         </div>
 
 
+
+        <!-- ===============================================
+             ORIGINAL CLAVICLE LINES
+        ================================================ -->
+
         <div
           class="clavicle-line clavicle-left"
         ></div>
+
 
         <div
           class="clavicle-line clavicle-right"
         ></div>
 
 
-        <!-- LEFT OUTER -->
+
+        <!-- ===============================================
+             L2 / LEFT OUTER
+        ================================================ -->
 
         <div
           class="haptic-point haptic-l2"
@@ -737,6 +812,7 @@
         >
 
           <span></span>
+
 
           <div>
 
@@ -753,7 +829,10 @@
         </div>
 
 
-        <!-- LEFT INNER -->
+
+        <!-- ===============================================
+             L1 / LEFT INNER
+        ================================================ -->
 
         <div
           class="haptic-point haptic-l1"
@@ -761,6 +840,7 @@
         >
 
           <span></span>
+
 
           <div>
 
@@ -777,7 +857,10 @@
         </div>
 
 
-        <!-- RIGHT INNER -->
+
+        <!-- ===============================================
+             R1 / RIGHT INNER
+        ================================================ -->
 
         <div
           class="haptic-point haptic-r1"
@@ -785,6 +868,7 @@
         >
 
           <span></span>
+
 
           <div>
 
@@ -801,7 +885,10 @@
         </div>
 
 
-        <!-- RIGHT OUTER -->
+
+        <!-- ===============================================
+             R2 / RIGHT OUTER
+        ================================================ -->
 
         <div
           class="haptic-point haptic-r2"
@@ -809,6 +896,7 @@
         >
 
           <span></span>
+
 
           <div>
 
@@ -825,8 +913,18 @@
         </div>
 
 
+
+        <!-- ===============================================
+             BODY CENTER AXIS
+        ================================================ -->
+
         <div class="body-center-line"></div>
 
+
+
+        <!-- ===============================================
+             FOOTER
+        ================================================ -->
 
         <div class="haptic-body-note">
 
@@ -846,6 +944,13 @@
 
   </div>
 
+
+
+  <!-- =====================================================
+       APP ENTRY
+
+       main.js imports style.css
+    ====================================================== -->
 
   <script
     type="module"
